@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-02-13 22:17:15
+ * @LastEditTime: 2026-02-19 18:31:00
  * @Description: 账户信息页(查看页)
  */
 
@@ -123,7 +123,6 @@ class _AccountListPageState extends State<AccountListPage> {
   }
 
   @override
-  @override
   Widget build(BuildContext context) {
     return CallbackShortcuts(
       bindings: {
@@ -228,7 +227,7 @@ class _AccountListPageState extends State<AccountListPage> {
                 DataColumn(
                   label: SizedBox(
                     width: constraints.maxWidth * 0.3,
-                    child: const Text('用户ID'),
+                    child: const Text('用户昵称'),
                   ),
                 ),
                 DataColumn(
@@ -246,7 +245,7 @@ class _AccountListPageState extends State<AccountListPage> {
                   cells: [
                     DataCell(Text(acc.platform)),
                     DataCell(Text(acc.pfType)),
-                    DataCell(Text(acc.userId)),
+                    DataCell(Text(acc.name)),
                     DataCell(
                       acc.tags.isEmpty
                           ? const Text("-")
@@ -300,19 +299,22 @@ class _AccountListPageState extends State<AccountListPage> {
             padding: const EdgeInsets.all(16.0),
             children: [
               _buildInfoRow("平台名称", account.platform),
+              _buildInfoRow("用户昵称", account.name),
               _buildInfoRow("平台类型", account.pfType),
               _buildInfoRow("备注(平台)", account.pfRemark ?? "无"),
               _buildInfoRow("标签", account.tags.join(", ")),
               _buildInfoRow("用户ID", account.userId),
               _buildInfoRow("绑定邮箱", account.email),
               _buildInfoRow("绑定手机", account.phone),
+              _buildInfoRow("密码", account.pswd),
+              _buildInfoRow("预留生日", account.birth ?? "未填写"),
               _buildInfoRow("注册日期", account.signupDate),
               _buildInfoRow("实名标记", account.realName ? "是" : "否"),
-              _buildInfoRow("信息备注", account.infoRemark ?? "无"),
+              _buildInfoRow("备注(账户)", account.infoRemark ?? "无"),
               const SizedBox(height: 20),
               //*修改条目按钮
               ElevatedButton.icon(
-                onPressed: () {},
+                onPressed: () => _showEditAccountDialog(account),
                 icon: const Icon(Icons.edit),
                 label: const Text("修改此条目"),
                 style: ElevatedButton.styleFrom(
@@ -349,6 +351,163 @@ class _AccountListPageState extends State<AccountListPage> {
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
           ),
         ],
+      ),
+    );
+  }
+
+  // 弹出修改账户对话框
+  void _showEditAccountDialog(Account account) {
+    final formKey = GlobalKey<FormState>();
+
+    // 使用现有账户的数据初始化变量
+    String platform = account.platform;
+    String pfType = account.pfType;
+    String pfRemark = account.pfRemark ?? '';
+    String name = account.name;
+    String userId = account.userId;
+    String email = account.email;
+    String pswd = account.pswd;
+    String phone = account.phone;
+    String birth = account.birth ?? '';
+    String infoRemark = account.infoRemark ?? '';
+    String signupDate = account.signupDate;
+    String tagsStr = account.tags.join(',');
+    bool realName = account.realName;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text("修改账户: ${account.platform}"),
+          content: SizedBox(
+            width: 500,
+            child: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      initialValue: platform, // 设置初始值
+                      decoration: const InputDecoration(
+                        labelText: "平台名称 (必填) *",
+                      ),
+                      validator: (v) =>
+                          (v == null || v.isEmpty) ? "请输入平台名称" : null,
+                      onChanged: (v) => platform = v,
+                    ),
+                    TextFormField(
+                      initialValue: name, // 设置初始值
+                      decoration: const InputDecoration(
+                        labelText: "用户昵称 (必填) *",
+                      ),
+                      validator: (v) =>
+                          (v == null || v.isEmpty) ? "请输入用户昵称" : null,
+                      onChanged: (v) => name = v,
+                    ),
+                    const Divider(height: 32),
+                    TextFormField(
+                      initialValue: pfType,
+                      decoration: const InputDecoration(labelText: "平台类型"),
+                      onChanged: (v) => pfType = v,
+                    ),
+                    TextFormField(
+                      initialValue: pfRemark,
+                      decoration: const InputDecoration(labelText: "平台备注"),
+                      onChanged: (v) => pfRemark = v,
+                    ),
+                    TextFormField(
+                      initialValue: userId,
+                      decoration: const InputDecoration(labelText: "用户ID"),
+                      onChanged: (v) => userId = v,
+                    ),
+                    TextFormField(
+                      initialValue: pswd,
+                      decoration: const InputDecoration(labelText: "密码"),
+                      onChanged: (v) => pswd = v,
+                    ),
+                    TextFormField(
+                      initialValue: phone,
+                      decoration: const InputDecoration(labelText: "绑定手机"),
+                      onChanged: (v) => phone = v,
+                    ),
+                    TextFormField(
+                      initialValue: email,
+                      decoration: const InputDecoration(labelText: "绑定邮箱"),
+                      onChanged: (v) => email = v,
+                    ),
+                    TextFormField(
+                      initialValue: birth,
+                      decoration: const InputDecoration(labelText: "预留生日"),
+                      onChanged: (v) => birth = v,
+                    ),
+                    TextFormField(
+                      initialValue: tagsStr,
+                      decoration: const InputDecoration(labelText: "标签 (逗号分隔)"),
+                      onChanged: (v) => tagsStr = v,
+                    ),
+                    TextFormField(
+                      initialValue: infoRemark,
+                      decoration: const InputDecoration(labelText: "账户备注"),
+                      onChanged: (v) => infoRemark = v,
+                    ),
+                    TextFormField(
+                      initialValue: signupDate,
+                      decoration: const InputDecoration(labelText: "注册时间"),
+                      onChanged: (v) => signupDate = v,
+                    ),
+                    CheckboxListTile(
+                      title: const Text("是否已实名"),
+                      value: realName,
+                      onChanged: (v) =>
+                          setDialogState(() => realName = v ?? false),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("取消"),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (formKey.currentState!.validate()) {
+                  // 构造更新后的 Account 对象 (保持 ID 不变)
+                  final updatedAccount = Account(
+                    id: account.id, // 关键：使用原有的 ID
+                    platform: platform,
+                    pfType: pfType,
+                    pfRemark: pfRemark,
+                    name: name,
+                    userId: userId,
+                    email: email,
+                    pswd: pswd,
+                    phone: phone,
+                    birth: birth,
+                    infoRemark: infoRemark,
+                    signupDate: signupDate,
+                    realName: realName,
+                    tags: tagsStr.isEmpty ? [] : tagsStr.split(','),
+                  );
+
+                  // 存入数据库 (由于 ID 相同，insertAccount 里的 replace 逻辑会覆盖旧数据)
+                  await StorageService().insertAccount(updatedAccount);
+
+                  if (!context.mounted) return;
+                  Navigator.pop(context);
+                  _refreshAccountList(); // 刷新列表
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text("修改成功！")));
+                }
+              },
+              child: const Text("保存修改"),
+            ),
+          ],
+        ),
       ),
     );
   }
