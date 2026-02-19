@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-09 23:51:46
- * @LastEditTime: 2026-02-13 21:42:11
+ * @LastEditTime: 2026-02-19 18:02:30
  * @Description: 
  */
 
@@ -195,7 +195,11 @@ class _MainShellState extends State<MainShell> {
                           onChanged: (v) => pfType = v,
                         ),
                         TextFormField(
-                          decoration: const InputDecoration(labelText: "用户 ID"),
+                          decoration: const InputDecoration(labelText: "平台备注"),
+                          onChanged: (v) => pfRemark = v,
+                        ),
+                        TextFormField(
+                          decoration: const InputDecoration(labelText: "用户ID"),
                           onChanged: (v) => userId = v,
                         ),
                         TextFormField(
@@ -203,8 +207,16 @@ class _MainShellState extends State<MainShell> {
                           onChanged: (v) => pswd = v,
                         ),
                         TextFormField(
+                          decoration: const InputDecoration(labelText: "绑定手机"),
+                          onChanged: (v) => phone = v,
+                        ),
+                        TextFormField(
                           decoration: const InputDecoration(labelText: "绑定邮箱"),
                           onChanged: (v) => email = v,
+                        ),
+                        TextFormField(
+                          decoration: const InputDecoration(labelText: "预留生日"),
+                          onChanged: (v) => birth = v,
                         ),
                         TextFormField(
                           decoration: const InputDecoration(
@@ -212,7 +224,14 @@ class _MainShellState extends State<MainShell> {
                           ),
                           onChanged: (v) => tagsStr = v,
                         ),
-
+                        TextFormField(
+                          decoration: const InputDecoration(labelText: "账户备注"),
+                          onChanged: (v) => infoRemark = v,
+                        ),
+                        TextFormField(
+                          decoration: const InputDecoration(labelText: "注册时间"),
+                          onChanged: (v) => signupDate = v,
+                        ),
                         // 实名勾选框，使用 setDialogState 刷新
                         CheckboxListTile(
                           title: const Text("是否已实名"),
