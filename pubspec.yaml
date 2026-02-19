@@ -1,0 +1,29 @@
+name: accountmanager
+description: "A new Flutter project about accountmanager."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.10.8
+
+dependencies:
+  flutter:
+    sdk: flutter
+  sqflite_common_ffi: 2.3.2+1
+  path: ^1.9.1
+  uuid: ^4.5.2
+  window_manager: ^0.5.1
+  csv: ^6.0.0
+  file_picker: ^10.3.10
+
+dependency_overrides:
+  sqflite_common_ffi: 2.3.2+1
+  sqlite3: 2.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
