@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-02-19 18:31:00
+ * @LastEditTime: 2026-02-20 12:52:38
  * @Description: 账户信息页(查看页)
  */
 
@@ -127,42 +127,58 @@ class _AccountListPageState extends State<AccountListPage> {
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
-          _searchFocusNode.requestFocus(); // 按 Ctrl+F 时搜索框强制获得焦点
+          _searchFocusNode.requestFocus();
         },
       },
       child: Scaffold(
-        // 刷新按钮
+        // 右下角刷新按钮，用于导入后同步数据
         floatingActionButton: FloatingActionButton(
           mini: true,
           onPressed: _refreshAccountList,
           child: const Icon(Icons.refresh),
         ),
-        body: Row(
+        body: Stack(
           children: [
-            Expanded(
-              flex: 3,
-              child: Column(
-                children: [
-                  _buildSearchBox(),
-                  Expanded(
-                    child: _displayAccounts.isEmpty
-                        ? const Center(child: Text("未找到匹配账户或数据库为空"))
-                        : _buildAccountTable(),
-                  ),
-                ],
-              ),
+            // 底层：主列表内容
+            Column(
+              children: [
+                _buildSearchBox(),
+                Expanded(
+                  child: _displayAccounts.isEmpty
+                      ? const Center(child: Text("暂无数据，请前往导入页或点击刷新"))
+                      : _buildAccountTable(),
+                ),
+              ],
             ),
-            // 详情面板
+
+            // 中层：变暗遮罩
+            if (_isPanelOpen)
+              GestureDetector(
+                onTap: _closePanel,
+                child: Container(color: Colors.black.withValues(alpha: 0.3)),
+              ),
+
+            // 顶层：侧栏面板
             if (_isPanelOpen && _selectedRowIndex != null)
-              Container(
-                width: 350,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  border: const Border(
-                    left: BorderSide(color: Colors.grey, width: 0.5),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Container(
+                  width: 400,
+                  height: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 10,
+                        offset: Offset(-2, 0),
+                      ),
+                    ],
+                  ),
+                  child: _buildDetailPanel(
+                    _displayAccounts[_selectedRowIndex!],
                   ),
                 ),
-                child: _buildDetailPanel(_displayAccounts[_selectedRowIndex!]),
               ),
           ],
         ),
