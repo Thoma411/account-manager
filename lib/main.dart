@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-09 23:51:46
- * @LastEditTime: 2026-02-21 21:11:25
+ * @LastEditTime: 2026-02-21 22:29:14
  * @Description: 
  */
 
@@ -51,10 +51,38 @@ class VaultApp extends StatelessWidget {
           seedColor: Colors.blue,
           brightness: Brightness.light,
         ),
+
+        fontFamily: 'Segoe UI', //设置主字体
+        // 遇到中文字符时按顺序寻找以下字体
+        fontFamilyFallback: const [
+          'Microsoft YaHei', // Windows 默认中文
+          'PingFang SC', // iOS/macOS 默认中文
+          'Hiragino Sans GB',
+          'sans-serif',
+        ],
+        // 增强文本渲染清晰度（针对 Windows）
+        typography: Typography.material2021(platform: TargetPlatform.windows),
+        textTheme: const TextTheme(
+          // 详情页的标签（如“平台名称”）使用较小、浅色的样式
+          labelSmall: TextStyle(
+            fontSize: 11,
+            letterSpacing: 0.5,
+            color: Colors.grey,
+            fontWeight: FontWeight.w500,
+          ),
+          // 主要正文（如账号内容）
+          bodyMedium: TextStyle(
+            fontSize: 14,
+            letterSpacing: 0.2,
+            color: Colors.black87,
+          ),
+        ),
+
         dataTableTheme: DataTableThemeData(
           headingTextStyle: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.blue,
+            fontWeight: FontWeight.w500,
+            color: Colors.black87,
+            fontSize: 15,
           ),
           dataRowColor: WidgetStateProperty.resolveWith<Color?>((
             Set<WidgetState> states,
@@ -70,12 +98,14 @@ class VaultApp extends StatelessWidget {
             return null; // 默认颜色
           }),
         ),
+
         cardTheme: CardThemeData(
           elevation: 2,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
         ),
+
         // 统一输入框风格，让它看起来更现代
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
