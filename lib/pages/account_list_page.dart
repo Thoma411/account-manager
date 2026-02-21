@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-02-20 12:52:38
+ * @LastEditTime: 2026-02-21 20:46:51
  * @Description: 账户信息页(查看页)
  */
 
@@ -124,6 +124,9 @@ class _AccountListPageState extends State<AccountListPage> {
 
   @override
   Widget build(BuildContext context) {
+    // 定义侧栏宽度
+    const double panelWidth = 400;
+
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
@@ -131,7 +134,6 @@ class _AccountListPageState extends State<AccountListPage> {
         },
       },
       child: Scaffold(
-        // 右下角刷新按钮，用于导入后同步数据
         floatingActionButton: FloatingActionButton(
           mini: true,
           onPressed: _refreshAccountList,
@@ -139,7 +141,7 @@ class _AccountListPageState extends State<AccountListPage> {
         ),
         body: Stack(
           children: [
-            // 底层：主列表内容
+            // 1. 底层列表（永远可见）
             Column(
               children: [
                 _buildSearchBox(),
@@ -151,35 +153,45 @@ class _AccountListPageState extends State<AccountListPage> {
               ],
             ),
 
-            // 中层：变暗遮罩
-            if (_isPanelOpen)
-              GestureDetector(
-                onTap: _closePanel,
-                child: Container(color: Colors.black.withValues(alpha: 0.3)),
-              ),
-
-            // 顶层：侧栏面板
-            if (_isPanelOpen && _selectedRowIndex != null)
-              Align(
-                alignment: Alignment.centerRight,
-                child: Container(
-                  width: 400,
-                  height: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor,
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: 10,
-                        offset: Offset(-2, 0),
-                      ),
-                    ],
-                  ),
-                  child: _buildDetailPanel(
-                    _displayAccounts[_selectedRowIndex!],
-                  ),
+            // 2. 动画遮罩层
+            // 使用 IgnorePointer 确保遮罩消失时不会拦截点击事件
+            IgnorePointer(
+              ignoring: !_isPanelOpen,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 300),
+                opacity: _isPanelOpen ? 1.0 : 0.0,
+                child: GestureDetector(
+                  onTap: _closePanel,
+                  child: Container(color: Colors.black.withValues(alpha: 0.3)),
                 ),
               ),
+            ),
+
+            // 3. 动画滑动面板
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.fastOutSlowIn, // 使用 M3 标准的强调曲线，更有质感
+              right: _isPanelOpen ? 0 : -panelWidth, // 展开时在右边缘，关闭时藏在屏幕外
+              top: 0,
+              bottom: 0,
+              width: panelWidth,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 20,
+                      offset: const Offset(-5, 0),
+                    ),
+                  ],
+                ),
+                // 关键：如果没选中任何行，面板内容显示为空，防止报错
+                child: _selectedRowIndex != null
+                    ? _buildDetailPanel(_displayAccounts[_selectedRowIndex!])
+                    : const SizedBox.shrink(),
+              ),
+            ),
           ],
         ),
       ),
