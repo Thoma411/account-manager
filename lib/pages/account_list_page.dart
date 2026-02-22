@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-02-22 18:59:57
+ * @LastEditTime: 2026-02-22 19:11:54
  * @Description: 账户信息页(查看页)
  */
 
@@ -95,7 +95,10 @@ class _AccountListPageState extends State<AccountListPage> {
                 if (!context.mounted) return;
 
                 Navigator.of(context).pop(); // 关闭弹窗
-                _closePanel(); // 关闭右侧面板
+                setState(() {
+                  _selectedRowIndex = null; // 删除后立即清空选中索引
+                  _isPanelOpen = false; // 关闭面板
+                });
                 _refreshAccountList(); // 刷新列表
                 ScaffoldMessenger.of(
                   context,
@@ -188,9 +191,12 @@ class _AccountListPageState extends State<AccountListPage> {
                   ],
                 ),
                 // 关键：如果没选中任何行，面板内容显示为空，防止报错
-                child: _selectedRowIndex != null
+                child:
+                    (_isPanelOpen &&
+                        _selectedRowIndex != null &&
+                        _selectedRowIndex! < _displayAccounts.length) // 确保索引没越界
                     ? _buildDetailPanel(_displayAccounts[_selectedRowIndex!])
-                    : const SizedBox.shrink(),
+                    : const SizedBox.shrink(), // 如果越界或没选中则渲染一个空盒子
               ),
             ),
           ],
