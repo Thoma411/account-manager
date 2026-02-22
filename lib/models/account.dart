@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 21:55:09
- * @LastEditTime: 2026-02-12 23:19:02
+ * @LastEditTime: 2026-02-22 14:19:49
  * @Description: 13字段实体定义
  */
 
@@ -30,6 +30,7 @@ class Account {
   String? infoRemark; // 10: info_remark
   String signupDate; // 11: signup_date
   bool realName; // 12: real_name
+  String lastModified; // 13: 最后修改时间
 
   Account({
     required this.id,
@@ -46,6 +47,7 @@ class Account {
     this.infoRemark,
     required this.signupDate,
     this.realName = false,
+    required this.lastModified,
   });
 
   // 从 CSV 行数据映射为对象
@@ -72,6 +74,7 @@ class Account {
       realName:
           row[12]?.toString().toLowerCase() == 'true' ||
           row[12]?.toString() == '是',
+      lastModified: DateTime.now().toIso8601String(),
     );
   }
 
@@ -92,6 +95,7 @@ class Account {
       'info_remark': infoRemark,
       'signup_date': signupDate,
       'real_name': realName ? 1 : 0, // SQLite 不直接支持 bool
+      'last_modified': lastModified,
     };
   }
 
@@ -112,6 +116,7 @@ class Account {
       infoRemark: map['info_remark'],
       signupDate: map['signup_date'],
       realName: map['real_name'] == 1,
+      lastModified: map['last_modified'] ?? DateTime.now().toIso8601String(),
     );
   }
 }

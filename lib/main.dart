@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-09 23:51:46
- * @LastEditTime: 2026-02-21 22:29:14
+ * @LastEditTime: 2026-02-22 14:22:09
  * @Description: 
  */
 
@@ -348,6 +348,7 @@ class _MainShellState extends State<MainShell> {
                         signupDate: signupDate,
                         realName: realName,
                         tags: tagsStr.isEmpty ? [] : tagsStr.split(','),
+                        lastModified: DateTime.now().toIso8601String(),
                       );
 
                       await StorageService().insertAccount(newAccount);

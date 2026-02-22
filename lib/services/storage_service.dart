@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-02-13 19:27:46
+ * @LastEditTime: 2026-02-22 14:21:15
  * @Description: 与SQLite交互的方法
  */
 
@@ -43,7 +43,7 @@ class StorageService {
               id TEXT PRIMARY KEY,
               platform TEXT, pf_type TEXT, pf_remark TEXT, tags TEXT,
               name TEXT, user_id TEXT, email TEXT, pswd TEXT, phone TEXT, birth TEXT,
-              info_remark TEXT, signup_date TEXT, real_name INTEGER
+              info_remark TEXT, signup_date TEXT, real_name INTEGER, last_modified TEXT
             )
           ''');
         },

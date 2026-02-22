@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-02-21 20:46:51
+ * @LastEditTime: 2026-02-22 14:37:51
  * @Description: 账户信息页(查看页)
  */
 
@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 
 import '../models/account.dart'; // 导入模型
 import '../services/storage_service.dart'; // 导入存储服务
+import '../utils/utils.dart'; // 导入工具箱
 
 class AccountListPage extends StatefulWidget {
   const AccountListPage({super.key});
@@ -339,6 +340,7 @@ class _AccountListPageState extends State<AccountListPage> {
               _buildInfoRow("注册日期", account.signupDate),
               _buildInfoRow("实名标记", account.realName ? "是" : "否"),
               _buildInfoRow("备注(账户)", account.infoRemark ?? "无"),
+              _buildInfoRow("最后修改于", DateUtil.format(account.lastModified)),
               const SizedBox(height: 20),
               //*修改条目按钮
               ElevatedButton.icon(
@@ -519,6 +521,7 @@ class _AccountListPageState extends State<AccountListPage> {
                     signupDate: signupDate,
                     realName: realName,
                     tags: tagsStr.isEmpty ? [] : tagsStr.split(','),
+                    lastModified: DateTime.now().toIso8601String(),
                   );
 
                   // 存入数据库 (由于 ID 相同，insertAccount 里的 replace 逻辑会覆盖旧数据)
