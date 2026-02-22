@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-02-22 14:37:51
+ * @LastEditTime: 2026-02-22 18:59:57
  * @Description: 账户信息页(查看页)
  */
 
@@ -227,78 +227,113 @@ class _AccountListPageState extends State<AccountListPage> {
 
   Widget _buildAccountTable() {
     return LayoutBuilder(
-      // 使用 LayoutBuilder 获取当前可用宽度
       builder: (context, constraints) {
-        return SingleChildScrollView(
-          scrollDirection: Axis.vertical,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minWidth: constraints.maxWidth,
-            ), // 强制最小宽度为屏幕宽
-            child: DataTable(
-              showCheckboxColumn: false,
-              // 调整列间距
-              columnSpacing: 20,
-              // 关键：给每一列分配合理的宽度比例
-              columns: [
-                DataColumn(
-                  label: SizedBox(
-                    width: constraints.maxWidth * 0.2,
-                    child: const Text('平台'),
-                  ),
+        final double availableWidth =
+            constraints.maxWidth - 48; // 减去 DataTable 的 24*2 边距
+        final double col1 = availableWidth * 0.2;
+        final double col2 = availableWidth * 0.1;
+        final double col3 = availableWidth * 0.3;
+        final double col4 = availableWidth * 0.4; // 标签列可以稍微宽一点
+
+        return Column(
+          children: [
+            // 固定表头
+            Container(
+              height: 56,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
                 ),
-                DataColumn(
-                  label: SizedBox(
-                    width: constraints.maxWidth * 0.1,
-                    child: const Text('类型'),
-                  ),
-                ),
-                DataColumn(
-                  label: SizedBox(
-                    width: constraints.maxWidth * 0.3,
-                    child: const Text('用户昵称'),
-                  ),
-                ),
-                DataColumn(
-                  label: SizedBox(
-                    width: constraints.maxWidth * 0.2,
-                    child: const Text('标签'),
-                  ),
-                ),
-              ],
-              rows: List<DataRow>.generate(_displayAccounts.length, (index) {
-                final acc = _displayAccounts[index];
-                return DataRow(
-                  selected: _selectedRowIndex == index,
-                  onSelectChanged: (selected) => _onAccountSelected(index),
-                  cells: [
-                    DataCell(Text(acc.platform)),
-                    DataCell(Text(acc.pfType)),
-                    DataCell(Text(acc.name)),
-                    DataCell(
-                      acc.tags.isEmpty
-                          ? const Text("-")
-                          : Wrap(
-                              children: acc.tags
-                                  .map(
-                                    (t) => Padding(
-                                      padding: const EdgeInsets.only(right: 4),
-                                      child: Chip(
-                                        label: Text(
-                                          t,
-                                          style: const TextStyle(fontSize: 10),
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                            ),
+              ),
+              child: Row(
+                children: [
+                  const SizedBox(
+                    width: 24,
+                  ), // 关键：匹配 DataTable 的 horizontalMargin
+                  SizedBox(
+                    width: col1,
+                    child: const Text(
+                      '平台',
+                      style: TextStyle(fontWeight: FontWeight.w500),
                     ),
-                  ],
-                );
-              }),
+                  ),
+                  SizedBox(
+                    width: col2,
+                    child: const Text(
+                      '类型',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  SizedBox(
+                    width: col3,
+                    child: const Text(
+                      '用户昵称',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  SizedBox(
+                    width: col4,
+                    child: const Text(
+                      '标签',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  const SizedBox(width: 24), // 尾部边距对齐
+                ],
+              ),
             ),
-          ),
+
+            // 滚动内容
+            Expanded(
+              child: SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                  child: DataTable(
+                    horizontalMargin: 24, // 显式设定边距为 24
+                    headingRowHeight: 0,
+                    showCheckboxColumn: false,
+                    columnSpacing: 0, // 将列间距设为0，完全依靠 SizedBox 控制宽度
+                    columns: [
+                      DataColumn(label: SizedBox(width: col1)),
+                      DataColumn(label: SizedBox(width: col2)),
+                      DataColumn(label: SizedBox(width: col3)),
+                      DataColumn(label: SizedBox(width: col4)),
+                    ],
+                    rows: List<DataRow>.generate(_displayAccounts.length, (
+                      index,
+                    ) {
+                      final acc = _displayAccounts[index];
+                      return DataRow(
+                        selected: _selectedRowIndex == index,
+                        onSelectChanged: (selected) =>
+                            _onAccountSelected(index),
+                        cells: [
+                          DataCell(
+                            SizedBox(width: col1, child: Text(acc.platform)),
+                          ),
+                          DataCell(
+                            SizedBox(width: col2, child: Text(acc.pfType)),
+                          ),
+                          DataCell(
+                            SizedBox(width: col3, child: Text(acc.name)),
+                          ),
+                          DataCell(
+                            SizedBox(
+                              width: col4,
+                              child: Text(
+                                acc.tags.isEmpty ? "-" : acc.tags.join(", "),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
+                  ),
+                ),
+              ),
+            ),
+          ],
         );
       },
     );
