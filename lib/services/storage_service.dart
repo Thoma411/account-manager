@@ -1,13 +1,14 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-02-22 14:21:15
+ * @LastEditTime: 2026-02-22 20:29:58
  * @Description: 与SQLite交互的方法
  */
 
 import 'package:flutter/material.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:path/path.dart';
+import 'dart:io';
 
 import '../models/account.dart';
 
@@ -22,6 +23,20 @@ class StorageService {
     if (_database != null) return _database!;
     _database = await _initDB();
     return _database!;
+  }
+
+  Future<bool> isDatabaseExists() async {
+    try {
+      sqfliteFfiInit(); // 获取数据库所在目录
+      var databaseFactory = databaseFactoryFfi;
+      final dbPath = await databaseFactory.getDatabasesPath();
+      final path = join(dbPath, 'vault_keeper.db'); // 拼接完整路径
+
+      return await File(path).exists(); // 检查文件是否存在
+    } catch (e) {
+      debugPrint("探测数据库失败: $e");
+      return false;
+    }
   }
 
   Future<Database> _initDB() async {
@@ -61,6 +76,7 @@ class StorageService {
     );
   }
 
+  // 删除数据
   Future<void> deleteAccount(String id) async {
     final db = await database;
     await db.delete(

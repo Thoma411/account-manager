@@ -1,13 +1,15 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-09 23:51:46
- * @LastEditTime: 2026-02-22 14:22:09
+ * @LastEditTime: 2026-02-22 20:23:27
  * @Description: 
  */
 
+import 'package:accountmanager/pages/login_page.dart';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:uuid/uuid.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'pages/account_list_page.dart';
 import 'models/account.dart';
@@ -15,36 +17,49 @@ import 'services/storage_service.dart';
 import 'services/csv_service.dart';
 
 void main() async {
-  // 1. 确保初始化
+  // 1. 确保 Flutter 引擎绑定
   WidgetsFlutterBinding.ensureInitialized();
-  // 2. 初始化窗口管理器
+
+  // 2. 必须：先初始化 SQLite FFI 引擎，否则第 4 步会报错
+  sqfliteFfiInit();
+  databaseFactory = databaseFactoryFfi;
+
+  // 3. 初始化窗口管理器
   await windowManager.ensureInitialized();
 
   WindowOptions windowOptions = const WindowOptions(
-    size: Size(800, 600), // 默认启动大小
-    minimumSize: Size(800, 600), // 限制最小尺寸，防止UI崩坏
-    center: true, // 启动时居中
-    title: "Vault Keeper", // 窗口标题
+    size: Size(800, 600),
+    minimumSize: Size(800, 600),
+    center: true,
+    title: "Vault Keeper",
     backgroundColor: Colors.transparent,
     skipTaskbar: false,
     titleBarStyle: TitleBarStyle.normal,
   );
 
+  // 这里不用 await，让它异步执行显示过程
   windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.show();
     await windowManager.focus();
   });
 
-  runApp(const VaultApp());
+  // 4. 探测本地数据库是否存在
+  // 注意：这里调用的是我们即将在 StorageService 中添加的方法
+  final bool oldUser = await StorageService().isDatabaseExists();
+
+  // 5. 运行应用并传递状态
+  runApp(VaultApp(isOldUser: oldUser));
 }
 
 class VaultApp extends StatelessWidget {
-  const VaultApp({super.key});
+  final bool isOldUser;
+  const VaultApp({super.key, required this.isOldUser});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
@@ -124,7 +139,9 @@ class VaultApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const MainShell(),
+
+      // 根据是否为老用户显示不同首页
+      home: isOldUser ? const UnlockPage() : const WelcomePage(),
     );
   }
 }
