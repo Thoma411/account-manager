@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-02-22 20:29:58
+ * @LastEditTime: 2026-02-24 21:54:12
  * @Description: 与SQLite交互的方法
  */
 
@@ -88,6 +88,10 @@ class StorageService {
 
   // 获取所有数据
   Future<List<Account>> getAllAccounts() async {
+    // 文件不存在时直接返回空列表 不触发数据库初始化
+    bool exists = await isDatabaseExists();
+    if (!exists) return [];
+
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query('accounts');
     return List.generate(maps.length, (i) => Account.fromMap(maps[i]));

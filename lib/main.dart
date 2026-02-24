@@ -1,8 +1,8 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-09 23:51:46
- * @LastEditTime: 2026-02-22 20:23:27
- * @Description: 
+ * @LastEditTime: 2026-02-24 21:47:02
+ * @Description: main
  */
 
 import 'package:accountmanager/pages/login_page.dart';
@@ -140,8 +140,8 @@ class VaultApp extends StatelessWidget {
         ),
       ),
 
-      // 根据是否为老用户显示不同首页
-      home: isOldUser ? const UnlockPage() : const WelcomePage(),
+      // 根据是否为老用户进入不同的界面
+      home: isOldUser ? const UnlockPage() : const MainShell(),
     );
   }
 }

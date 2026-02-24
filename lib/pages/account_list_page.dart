@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-02-22 19:11:54
+ * @LastEditTime: 2026-02-24 21:45:30
  * @Description: 账户信息页(查看页)
  */
 
@@ -20,6 +20,8 @@ class AccountListPage extends StatefulWidget {
 }
 
 class _AccountListPageState extends State<AccountListPage> {
+  bool _isDbCreated = true; // 检测本地数据库是否存在
+
   // 数据源由 Map 改为 Account 对象列表
   int? _selectedRowIndex;
   bool _isPanelOpen = false;
@@ -35,7 +37,16 @@ class _AccountListPageState extends State<AccountListPage> {
   @override
   void initState() {
     super.initState();
+    _checkDbStatus();
     _refreshAccountList();
+  }
+
+  // 检查数据库库状态
+  Future<void> _checkDbStatus() async {
+    bool exists = await StorageService().isDatabaseExists();
+    setState(() {
+      _isDbCreated = exists;
+    });
   }
 
   // 刷新列表
@@ -150,8 +161,8 @@ class _AccountListPageState extends State<AccountListPage> {
               children: [
                 _buildSearchBox(),
                 Expanded(
-                  child: _displayAccounts.isEmpty
-                      ? const Center(child: Text("暂无数据，请前往导入页或点击刷新"))
+                  child: _allAccounts.isEmpty
+                      ? _buildEmptyStateUI() // 调用新的空状态 UI
                       : _buildAccountTable(),
                 ),
               ],
@@ -201,6 +212,58 @@ class _AccountListPageState extends State<AccountListPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyStateUI() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.shield_outlined, size: 80, color: Colors.blue),
+          const SizedBox(height: 24),
+          const Text(
+            "欢迎使用 Vault Keeper",
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _isDbCreated ? "目前还没有账户信息，请点击下方导入或点击 + 号添加" : "尚未初始化数据库，请选择操作以开始使用",
+            style: const TextStyle(color: Colors.grey),
+          ),
+          const SizedBox(height: 40),
+
+          // 如果数据库不存在，显示两个核心按钮
+          if (!_isDbCreated)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () {
+                    // TODO: 弹出创建主密码的对话框或跳转
+                    _showSetupMasterPasswordDialog();
+                  },
+                  icon: const Icon(Icons.add_moderator),
+                  label: const Text("创建新数据库"),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(180, 50),
+                  ),
+                ),
+                const SizedBox(width: 20),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    // TODO: 跳转到云端同步页面
+                  },
+                  icon: const Icon(Icons.cloud_download_outlined),
+                  label: const Text("从云端恢复备份"),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(180, 50),
+                  ),
+                ),
+              ],
+            ),
+        ],
       ),
     );
   }
@@ -420,6 +483,63 @@ class _AccountListPageState extends State<AccountListPage> {
           Text(
             value,
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 创建主密码对话框
+  void _showSetupMasterPasswordDialog() {
+    final pwController = TextEditingController();
+    final confirmController = TextEditingController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false, // 强制用户必须完成或取消
+      builder: (context) => AlertDialog(
+        title: const Text("设置主密码"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("主密码是您加密数据的唯一凭证，务必牢记。"),
+            const SizedBox(height: 20),
+            TextField(
+              controller: pwController,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: "输入主密码"),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: confirmController,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: "确认主密码"),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("取消"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (pwController.text == confirmController.text &&
+                  pwController.text.length >= 6) {
+                // 1. 初始化数据库
+                await StorageService().database; // 这会触发 onCreate 建表
+                // 2. 更新 UI 状态
+                if (!mounted) return;
+                Navigator.pop(context);
+                _checkDbStatus(); // 刷新库存在状态
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text("数据库创建成功！")));
+              } else {
+                // 错误提示逻辑
+              }
+            },
+            child: const Text("确定创建"),
           ),
         ],
       ),
