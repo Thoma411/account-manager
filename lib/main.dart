@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-09 23:51:46
- * @LastEditTime: 2026-02-24 21:47:02
+ * @LastEditTime: 2026-02-24 23:00:57
  * @Description: main
  */
 
@@ -234,7 +234,7 @@ class _MainShellState extends State<MainShell> {
   }
 
   // 弹出新增账户对话框
-  void _showAddAccountDialog() {
+  void _showAddAccountDialog() async {
     final formKey = GlobalKey<FormState>();
 
     // 临时变量，用于存储弹窗内的输入
@@ -390,33 +390,6 @@ class _MainShellState extends State<MainShell> {
 }
 
 // --- 以下是各页面的简单占位符 ---
-
-// class AccountListPage extends StatelessWidget {
-//   const AccountListPage({super.key});
-//   @override
-//   Widget build(BuildContext context) {
-//     return Column(
-//       children: [
-//         // 顶部搜索框
-//         Padding(
-//           padding: const EdgeInsets.all(16.0),
-//           child: TextField(
-//             decoration: InputDecoration(
-//               hintText: "搜索账户 (Ctrl + F)",
-//               prefixIcon: const Icon(Icons.search),
-//               border: OutlineInputBorder(
-//                 borderRadius: BorderRadius.circular(8),
-//               ),
-//             ),
-//           ),
-//         ),
-//         // 下面是模拟的表格列表
-//         Expanded(child: Center(child: Text("这里将放置 Edge 风格的账户表格"))),
-//       ],
-//     );
-//   }
-// }
-
 class SyncPage extends StatelessWidget {
   const SyncPage({super.key});
   @override

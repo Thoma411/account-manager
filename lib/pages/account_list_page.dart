@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-02-24 21:45:30
+ * @LastEditTime: 2026-02-24 22:58:40
  * @Description: 账户信息页(查看页)
  */
 
@@ -51,6 +51,16 @@ class _AccountListPageState extends State<AccountListPage> {
 
   // 刷新列表
   Future<void> _refreshAccountList() async {
+    // 先判断库是否存在，不存在直接返回空列表
+    bool exists = await StorageService().isDatabaseExists();
+    if (!exists) {
+      setState(() {
+        _allAccounts = [];
+        _displayAccounts = [];
+      });
+      return;
+    }
+
     final data = await StorageService().getAllAccounts();
     setState(() {
       _allAccounts = data;
@@ -229,7 +239,7 @@ class _AccountListPageState extends State<AccountListPage> {
           ),
           const SizedBox(height: 12),
           Text(
-            _isDbCreated ? "目前还没有账户信息，请点击下方导入或点击 + 号添加" : "尚未初始化数据库，请选择操作以开始使用",
+            _isDbCreated ? "目前还没有账户信息，请点击侧栏导入或点击'+'号添加" : "尚未初始化数据库，请选择操作以开始使用",
             style: const TextStyle(color: Colors.grey),
           ),
           const SizedBox(height: 40),
@@ -507,7 +517,7 @@ class _AccountListPageState extends State<AccountListPage> {
             TextField(
               controller: pwController,
               obscureText: true,
-              decoration: const InputDecoration(labelText: "输入主密码"),
+              decoration: const InputDecoration(labelText: "输入主密码 (至少6位)"),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -524,20 +534,34 @@ class _AccountListPageState extends State<AccountListPage> {
           ),
           ElevatedButton(
             onPressed: () async {
-              if (pwController.text == confirmController.text &&
-                  pwController.text.length >= 6) {
-                // 1. 初始化数据库
-                await StorageService().database; // 这会触发 onCreate 建表
-                // 2. 更新 UI 状态
-                if (!mounted) return;
-                Navigator.pop(context);
-                _checkDbStatus(); // 刷新库存在状态
+              String pw = pwController.text;
+              String cpw = confirmController.text;
+
+              if (pw.length < 6) {
                 ScaffoldMessenger.of(
                   context,
-                ).showSnackBar(const SnackBar(content: Text("数据库创建成功！")));
-              } else {
-                // 错误提示逻辑
+                ).showSnackBar(const SnackBar(content: Text("主密码不得少于6位")));
+                return;
               }
+              if (pw != cpw) {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text("输入密码不一致")));
+                return;
+              }
+              await StorageService().database; // 建库
+              if (!context.mounted) return;
+
+              Navigator.pop(context); // 关闭对话框
+
+              // 刷新 UI 状态
+              await _checkDbStatus();
+              if (!context.mounted) return;
+              await _refreshAccountList();
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text("主密码设置成功！数据库已初始化。")));
             },
             child: const Text("确定创建"),
           ),
