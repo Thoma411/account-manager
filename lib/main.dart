@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-09 23:51:46
- * @LastEditTime: 2026-02-24 23:00:57
+ * @LastEditTime: 2026-02-24 23:02:23
  * @Description: main
  */
 
@@ -235,6 +235,25 @@ class _MainShellState extends State<MainShell> {
 
   // 弹出新增账户对话框
   void _showAddAccountDialog() async {
+    bool hasDb = await StorageService().isDatabaseExists(); // 检测数据库是否存在
+    if (!mounted) return;
+    if (!hasDb) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text("操作受阻"),
+          content: const Text("请先在主界面“创建新数据库”并设置主密码，然后再添加账户条目。"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("确认"),
+            ),
+          ],
+        ),
+      );
+      return; // 拦截后续的新增逻辑
+    }
+
     final formKey = GlobalKey<FormState>();
 
     // 临时变量，用于存储弹窗内的输入
