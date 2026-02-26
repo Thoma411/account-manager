@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-09 23:51:46
- * @LastEditTime: 2026-02-24 23:02:23
+ * @LastEditTime: 2026-02-26 20:45:03
  * @Description: main
  */
 
@@ -164,11 +164,7 @@ class _MainShellState extends State<MainShell> {
           // 1. 左侧导航栏
           NavigationRail(
             selectedIndex: _selectedIndex,
-            onDestinationSelected: (int index) {
-              setState(() {
-                _selectedIndex = index; // 切换页面
-              });
-            },
+            onDestinationSelected: _onDestinationSelected,
             labelType: NavigationRailLabelType.all,
             leading: const Padding(
               padding: EdgeInsets.symmetric(vertical: 20),
@@ -231,6 +227,36 @@ class _MainShellState extends State<MainShell> {
         ],
       ),
     );
+  }
+
+  void _onDestinationSelected(int index) async {
+    // 1. 检查数据库是否存在
+    bool hasDb = await StorageService().isDatabaseExists();
+    // 2. 仅在有库或点击设置页时允许切换
+    // 4是设置页的索引 0是主页（主页有引导逻辑，所以允许进入）
+    if (!hasDb && index != 0 && index != 4) {
+      if (!mounted) return;
+      // 弹出警告
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text("功能受限"),
+          content: const Text("请先在主页创建新数据库"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("确认"),
+            ),
+          ],
+        ),
+      );
+      return; // 拦截，不执行下面的 setState
+    }
+
+    // 3. 只有通过校验，才更新索引切换页面
+    setState(() {
+      _selectedIndex = index;
+    });
   }
 
   // 弹出新增账户对话框
@@ -430,9 +456,18 @@ class MigrationPage extends StatelessWidget {
           const SizedBox(height: 20),
           ElevatedButton(
             onPressed: () async {
-              // 1. 调用导入服务
+              // 1.检查本地是否有库
+              bool hasDb = await StorageService().isDatabaseExists();
+              if (!hasDb) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("错误：请先创建数据库并设置主密码")),
+                );
+                return;
+              }
+              // 2.调用导入服务
               int count = await CsvService().pickAndImportCsv();
-              // 2. 弹窗提示结果
+              // 3.弹窗提示结果
               if (context.mounted) {
                 ScaffoldMessenger.of(
                   context,
