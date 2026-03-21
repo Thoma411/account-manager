@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-03-21 20:28:02
+ * @LastEditTime: 2026-03-21 21:08:01
  * @Description: 账户信息页(查看页)
  */
 
@@ -74,29 +74,42 @@ class _AccountListPageState extends State<AccountListPage> {
 
   // 核心过滤逻辑
   void _filterAccounts(String query) {
-    List<Account> results = [];
-    if (query.isEmpty) {
-      // 如果搜索框为空，显示全部
-      results = _allAccounts;
-    } else {
-      // 匹配 平台名、用户ID 或 标签
-      results = _allAccounts.where((acc) {
-        final platformMatch = acc.platform.toLowerCase().contains(
-          query.toLowerCase(),
-        );
-        final userIdMatch = acc.userId.toLowerCase().contains(
-          query.toLowerCase(),
-        );
-        final tagsMatch = acc.tags.any(
-          (tag) => tag.toLowerCase().contains(query.toLowerCase()),
-        );
-
-        return platformMatch || userIdMatch || tagsMatch;
-      }).toList();
-    }
-
     setState(() {
-      _displayAccounts = results;
+      if (query.isEmpty) {
+        _displayAccounts = _allAccounts; // 如果搜索框为空,显示全部
+      } else {
+        final lowercaseQuery = query.toLowerCase(); // 提前转小写,优化性能
+
+        _displayAccounts = _allAccounts.where((acc) {
+          // 1. 基础必填字段匹配
+          final platformMatch = acc.platform.toLowerCase().contains(
+            lowercaseQuery,
+          );
+          final nameMatch = acc.name.toLowerCase().contains(lowercaseQuery);
+          final userIdMatch = acc.userId.toLowerCase().contains(lowercaseQuery);
+
+          // 2. 备注类字段匹配（使用 ?? '' 处理 null 值）
+          final pfRemarkMatch = (acc.pfRemark ?? "").toLowerCase().contains(
+            lowercaseQuery,
+          );
+          final infoRemarkMatch = (acc.infoRemark ?? "").toLowerCase().contains(
+            lowercaseQuery,
+          );
+
+          // 3. 标签匹配
+          final tagsMatch = acc.tags.any(
+            (tag) => tag.toLowerCase().contains(lowercaseQuery),
+          );
+
+          // 返回以上任一条件满足的结果
+          return platformMatch ||
+              nameMatch ||
+              userIdMatch ||
+              pfRemarkMatch ||
+              infoRemarkMatch ||
+              tagsMatch;
+        }).toList();
+      }
     });
   }
 
