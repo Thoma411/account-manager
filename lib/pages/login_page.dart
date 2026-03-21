@@ -1,13 +1,14 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-22 19:47:45
- * @LastEditTime: 2026-02-24 22:14:41
+ * @LastEditTime: 2026-03-21 18:58:59
  * @Description: 初始登入界面
  */
 
 import 'package:flutter/material.dart';
 
 import '../main.dart'; // 用于跳转到 MainShell
+import '../services/auth_service.dart';
 
 // 老用户解锁界面
 class UnlockPage extends StatefulWidget {
@@ -20,13 +21,18 @@ class UnlockPage extends StatefulWidget {
 class _UnlockPageState extends State<UnlockPage> {
   final TextEditingController _passwordController = TextEditingController();
 
-  void _unlock() {
-    // TODO: 调用加密模块验证密码
-    // 目前暂时直接通过
-    if (_passwordController.text.isNotEmpty) {
+  void _unlock() async {
+    // 调用验证逻辑
+    bool success = await AuthService().verifyPassword(_passwordController.text);
+    if (!mounted) return;
+    if (success) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => const MainShell()),
       );
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("密码错误，请重试")));
     }
   }
 

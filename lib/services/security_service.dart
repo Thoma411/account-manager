@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 17:27:11
- * @LastEditTime: 2026-03-21 18:33:57
+ * @LastEditTime: 2026-03-21 18:48:55
  * @Description: 加解密方法
  */
 
@@ -12,11 +12,16 @@ import 'package:encrypt/encrypt.dart';
 import 'package:pointycastle/export.dart' as pc;
 
 class SecurityService {
+  Key? _currentDataKey; // DK 应用锁定或退出时应置为 null
+  void setDK(Key key) => _currentDataKey = key;
+  Key? get currentDataKey => _currentDataKey;
+  void clearKeys() => _currentDataKey = null; // 清理内存
+
   static final SecurityService _instance = SecurityService._internal();
   factory SecurityService() => _instance;
   SecurityService._internal();
 
-  // 1. 生成真随机数 (用于 Salt, DK, RK)
+  // 生成真随机数 (用于 Salt, DK, RK)
   Uint8List generateRandomBytes(int length) {
     final random = Random.secure();
     return Uint8List.fromList(
@@ -24,7 +29,7 @@ class SecurityService {
     );
   }
 
-  // 2. 密钥派生函数 (PBKDF2): 将 MP 转换为 MK
+  // 密钥派生函数 (PBKDF2): 将 MP 转换为 MK
   Key deriveMasterKey(String password, Uint8List salt) {
     // 显式指定使用 SHA256 摘要和 HMAC 运算
     final pc.PBKDF2KeyDerivator derivator = pc.PBKDF2KeyDerivator(
@@ -38,8 +43,7 @@ class SecurityService {
     return Key(keyBytes);
   }
 
-  // 3. 核心加密方法 (AES-256-GCM)
-  // 返回格式：IV(12字节) + Ciphertext
+  // 核心加密方法 (AES-256-GCM) 返回格式：IV(12字节) + Ciphertext
   String encrypt(String plainText, Key key) {
     final iv = IV(generateRandomBytes(12)); // GCM 建议使用 12 字节 IV
     final encrypter = Encrypter(AES(key, mode: AESMode.gcm, padding: null));
@@ -52,7 +56,7 @@ class SecurityService {
     return base64.encode(combined);
   }
 
-  // 4. 核心解密方法
+  // 核心解密方法
   String decrypt(String encodedData, Key key) {
     final combined = base64.decode(encodedData);
     final iv = IV(combined.sublist(0, 12));
