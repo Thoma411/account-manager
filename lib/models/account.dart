@@ -1,12 +1,14 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 21:55:09
- * @LastEditTime: 2026-02-22 14:19:49
+ * @LastEditTime: 2026-03-21 20:43:27
  * @Description: 13字段实体定义
  */
 
 import 'dart:convert';
 import 'package:uuid/uuid.dart';
+
+import '../services/security_service.dart';
 
 class Account {
   // 1. 系统主键
@@ -80,19 +82,32 @@ class Account {
 
   // 转换为数据库存储的 Map
   Map<String, dynamic> toMap() {
+    final sec = SecurityService();
+    final dk = sec.currentDataKey;
+
+    // 辅助加密函数：如果有 DK 则加密，否则保持原样（防御性编程）
+    String encryptIfPossible(String value) {
+      if (dk != null && value.isNotEmpty) {
+        return sec.encrypt(value, dk);
+      }
+      return value;
+    }
+
     return {
       'id': id,
       'platform': platform,
       'pf_type': pfType,
       'pf_remark': pfRemark,
       'tags': jsonEncode(tags), // List 转 JSON 字符串
-      'name': name,
-      'user_id': userId,
-      'email': email,
-      'pswd': pswd,
-      'phone': phone,
-      'birth': birth,
-      'info_remark': infoRemark,
+
+      'name': encryptIfPossible(name), // 加密昵称
+      'user_id': encryptIfPossible(userId), // 加密ID
+      'email': encryptIfPossible(email), // 加密邮箱
+      'pswd': encryptIfPossible(pswd), // 加密密码
+      'phone': encryptIfPossible(phone), // 加密手机号
+      'birth': encryptIfPossible(birth ?? ""), // 加密生日
+      'info_remark': encryptIfPossible(infoRemark ?? ""), //加密备注
+
       'signup_date': signupDate,
       'real_name': realName ? 1 : 0, // SQLite 不直接支持 bool
       'last_modified': lastModified,
@@ -101,19 +116,37 @@ class Account {
 
   // 从数据库 Map 还原
   factory Account.fromMap(Map<String, dynamic> map) {
+    final sec = SecurityService();
+    final dk = sec.currentDataKey;
+
+    // 辅助解密函数
+    String decryptIfPossible(dynamic value) {
+      if (value == null || value.toString().isEmpty) return "";
+      if (dk != null) {
+        try {
+          return sec.decrypt(value.toString(), dk);
+        } catch (e) {
+          return "[解密失败]"; // 可能是因为旧数据是明文，或者钥匙不对
+        }
+      }
+      return value.toString();
+    }
+
     return Account(
       id: map['id'],
       platform: map['platform'],
       pfType: map['pf_type'],
       pfRemark: map['pf_remark'],
       tags: List<String>.from(jsonDecode(map['tags'] ?? '[]')),
-      name: map['name'],
-      userId: map['user_id'],
-      email: map['email'],
-      pswd: map['pswd'],
-      phone: map['phone'],
-      birth: map['birth'],
-      infoRemark: map['info_remark'],
+
+      name: decryptIfPossible(map['name']), // 解密昵称
+      userId: decryptIfPossible(map['user_id']), // 解密ID
+      email: decryptIfPossible(map['email']), // 解密邮箱
+      pswd: decryptIfPossible(map['pswd']), // 解密密码
+      phone: decryptIfPossible(map['phone']), // 解密手机号
+      birth: decryptIfPossible(map['birth']), // 解密生日
+      infoRemark: decryptIfPossible(map['info_remark']), // 解密备注
+
       signupDate: map['signup_date'],
       realName: map['real_name'] == 1,
       lastModified: map['last_modified'] ?? DateTime.now().toIso8601String(),

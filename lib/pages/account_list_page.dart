@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-03-21 18:42:15
+ * @LastEditTime: 2026-03-21 20:28:02
  * @Description: 账户信息页(查看页)
  */
 
@@ -576,6 +576,7 @@ class _AccountListPageState extends State<AccountListPage> {
                 await storage.saveMetadata('evb', evb);
                 await storage.saveMetadata('erk', erk);
 
+                sec.setDK(dk); // 初始化成功后立即激活内存钥匙
                 if (!context.mounted) return;
                 Navigator.pop(context); // 关闭输入框
 
