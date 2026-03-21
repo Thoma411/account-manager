@@ -1,15 +1,18 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-02-26 20:40:51
+ * @LastEditTime: 2026-03-21 18:42:15
  * @Description: 账户信息页(查看页)
  */
 
+import 'dart:convert';
+import 'package:encrypt/encrypt.dart' as enc;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/account.dart'; // 导入模型
 import '../services/storage_service.dart'; // 导入存储服务
+import '../services/security_service.dart'; // 导入安全服务
 import '../utils/utils.dart'; // 导入工具箱
 
 class AccountListPage extends StatefulWidget {
@@ -251,7 +254,6 @@ class _AccountListPageState extends State<AccountListPage> {
               children: [
                 ElevatedButton.icon(
                   onPressed: () {
-                    // TODO: 弹出创建主密码的对话框或跳转
                     _showSetupMasterPasswordDialog();
                   },
                   icon: const Icon(Icons.add_moderator),
@@ -503,21 +505,23 @@ class _AccountListPageState extends State<AccountListPage> {
   void _showSetupMasterPasswordDialog() {
     final pwController = TextEditingController();
     final confirmController = TextEditingController();
+    final sec = SecurityService();
+    final storage = StorageService();
 
     showDialog(
       context: context,
-      barrierDismissible: false, // 强制用户必须完成或取消
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text("设置主密码"),
+        title: const Text("初始化安全保险箱"),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text("主密码是您加密数据的唯一凭证，务必牢记。"),
+            const Text("设置主密码后，我们将为您生成唯一的加密环境。"),
             const SizedBox(height: 20),
             TextField(
               controller: pwController,
               obscureText: true,
-              decoration: const InputDecoration(labelText: "输入主密码 (至少6位)"),
+              decoration: const InputDecoration(labelText: "输入主密码 (不少于6位)"),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -535,35 +539,105 @@ class _AccountListPageState extends State<AccountListPage> {
           ElevatedButton(
             onPressed: () async {
               String pw = pwController.text;
-              String cpw = confirmController.text;
-
-              if (pw.length < 6) {
+              if (pw != confirmController.text || pw.length < 6) {
                 ScaffoldMessenger.of(
                   context,
-                ).showSnackBar(const SnackBar(content: Text("主密码不得少于6位")));
+                ).showSnackBar(const SnackBar(content: Text("密码不一致或长度不足6位")));
                 return;
               }
-              if (pw != cpw) {
+
+              // 开始核心加密初始化
+              try {
+                // 1. 触发建库
+                await storage.database;
+
+                // 2. 生成随机原语
+                final salt = sec.generateRandomBytes(32); // 32字节盐
+                final dkBytes = sec.generateRandomBytes(32); // 32字节数据密钥 (DK)
+                final rkBytes = sec.generateRandomBytes(32); // 32字节恢复密钥 (RK)
+
+                final dk = enc.Key(dkBytes);
+                final rk = enc.Key(rkBytes);
+                final rkString = base64.encode(rkBytes); // 用户的救命稻草
+
+                // 3. 派生主密钥 (MK)
+                final mk = sec.deriveMasterKey(pw, salt);
+
+                // 4. 执行"信封包装"加密
+                final edkM = sec.encrypt(base64.encode(dkBytes), mk); // MK锁DK
+                final edkR = sec.encrypt(base64.encode(dkBytes), rk); // RK锁DK
+                final evb = sec.encrypt("VAULT_READY", dk); // DK锁验证块
+                final erk = sec.encrypt(rkString, dk); // DK锁RK(供日后查看)
+
+                // 5. 持久化到 system_metadata
+                await storage.saveMetadata('master_salt', base64.encode(salt));
+                await storage.saveMetadata('edk_m', edkM);
+                await storage.saveMetadata('edk_r', edkR);
+                await storage.saveMetadata('evb', evb);
+                await storage.saveMetadata('erk', erk);
+
+                if (!context.mounted) return;
+                Navigator.pop(context); // 关闭输入框
+
+                // 6. 展示恢复密钥 (RK)
+                _showRecoveryKeyDialog(rkString);
+              } catch (e) {
                 ScaffoldMessenger.of(
                   context,
-                ).showSnackBar(const SnackBar(content: Text("输入密码不一致")));
-                return;
+                ).showSnackBar(SnackBar(content: Text("初始化失败: $e")));
               }
-              await StorageService().database; // 建库
-              if (!context.mounted) return;
-
-              Navigator.pop(context); // 关闭对话框
-
-              // 刷新 UI 状态
-              await _checkDbStatus();
-              if (!context.mounted) return;
-              await _refreshAccountList();
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text("主密码设置成功！数据库已初始化。")));
             },
-            child: const Text("确定创建"),
+            child: const Text("开始创建"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 展示恢复密钥对话框
+  void _showRecoveryKeyDialog(String rk) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange),
+            SizedBox(width: 10),
+            Text("请保存您的恢复密钥"),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("如果您忘记了主密码，这是找回数据的唯一方法。请务必将其复制并妥善保存。"),
+            const SizedBox(height: 20),
+            SelectableText(
+              rk,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue,
+                fontFamily: 'monospace', // 使用等宽字体
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              // 成功后刷新状态
+              await _checkDbStatus();
+              await _refreshAccountList();
+              if (context.mounted) {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text("保险箱已就绪")));
+              }
+            },
+            child: const Text("我已保存恢复密钥"),
           ),
         ],
       ),

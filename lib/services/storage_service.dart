@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-02-24 21:54:12
+ * @LastEditTime: 2026-03-21 17:56:51
  * @Description: 与SQLite交互的方法
  */
 
@@ -53,12 +53,20 @@ class StorageService {
       options: OpenDatabaseOptions(
         version: 1,
         onCreate: (db, version) async {
+          // 创建账户条目表
           await db.execute('''
             CREATE TABLE accounts (
               id TEXT PRIMARY KEY,
               platform TEXT, pf_type TEXT, pf_remark TEXT, tags TEXT,
               name TEXT, user_id TEXT, email TEXT, pswd TEXT, phone TEXT, birth TEXT,
               info_remark TEXT, signup_date TEXT, real_name INTEGER, last_modified TEXT
+            )
+          ''');
+          // 创建系统元数据表
+          await db.execute('''
+            CREATE TABLE system_metadata (
+              key TEXT PRIMARY KEY,
+              value TEXT
             )
           ''');
         },
@@ -95,5 +103,26 @@ class StorageService {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query('accounts');
     return List.generate(maps.length, (i) => Account.fromMap(maps[i]));
+  }
+
+  // 存储元数据
+  Future<void> saveMetadata(String key, String value) async {
+    final db = await database;
+    await db.insert('system_metadata', {
+      'key': key,
+      'value': value,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  // 取元数据
+  Future<String?> getMetadata(String key) async {
+    final db = await database;
+    final results = await db.query(
+      'system_metadata',
+      where: 'key = ?',
+      whereArgs: [key],
+    );
+    if (results.isNotEmpty) return results.first['value'] as String;
+    return null;
   }
 }
