@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   sqflite_common_ffi: 2.3.2+1
+  sqflite: ^2.4.2
   path: ^1.9.1
   uuid: ^4.5.2
   window_manager: ^0.5.1
@@ -17,8 +18,8 @@ dependencies:
   intl: ^0.20.2
   file_picker: ^10.3.10
   encrypt: ^5.0.3
-  crypto: ^3.0.7
   pointycastle: ^3.6.2
+  webdav_client: ^1.2.2
 
 dependency_overrides:
   sqflite_common_ffi: 2.3.2+1

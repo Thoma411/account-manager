@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-03-21 17:56:51
+ * @LastEditTime: 2026-04-08 17:41:36
  * @Description: 与SQLite交互的方法
  */
 
@@ -65,8 +65,14 @@ class StorageService {
           // 创建系统元数据表
           await db.execute('''
             CREATE TABLE system_metadata (
-              key TEXT PRIMARY KEY,
-              value TEXT
+              key TEXT PRIMARY KEY, value TEXT
+            )
+          ''');
+          // 创建设置表
+          await db.execute('''
+            CREATE TABLE app_settings (
+              key TEXT PRIMARY KEY, value TEXT,
+              is_encrypted INTEGER DEFAULT 0
             )
           ''');
         },

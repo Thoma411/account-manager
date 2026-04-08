@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-03-21 19:55:41
+ * @LastEditTime: 2026-04-08 18:02:45
  * @Description: 解锁与认证
  */
 
@@ -9,8 +9,9 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:encrypt/encrypt.dart' as enc;
 
-import 'storage_service.dart';
 import 'security_service.dart';
+import 'settings_service.dart';
+import 'storage_service.dart';
 
 class AuthService {
   final StorageService _storage = StorageService();
@@ -40,6 +41,7 @@ class AuthService {
       if (verifyResult == "VAULT_READY") {
         // 5. 验证通过, 把DK存入内存供全应用使用
         _sec.setDK(dk);
+        await SettingsService().loadSettings();
         return true;
       }
       return false;
