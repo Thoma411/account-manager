@@ -1,13 +1,13 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-22 19:47:45
- * @LastEditTime: 2026-03-21 18:58:59
+ * @LastEditTime: 2026-04-08 18:57:14
  * @Description: 初始登入界面
  */
 
 import 'package:flutter/material.dart';
 
-import '../main.dart'; // 用于跳转到 MainShell
+import '../pages/shell_page.dart'; // 用于跳转到 MainShell
 import '../services/auth_service.dart';
 
 // 老用户解锁界面
@@ -27,7 +27,7 @@ class _UnlockPageState extends State<UnlockPage> {
     if (!mounted) return;
     if (success) {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const MainShell()),
+        MaterialPageRoute(builder: (context) => const ShellPage()),
       );
     } else {
       ScaffoldMessenger.of(
