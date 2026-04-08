@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-04-08 20:46:21
+ * @LastEditTime: 2026-04-08 21:23:02
  * @Description: 主框架
  */
 
@@ -36,7 +36,6 @@ class _ShellPageState extends State<ShellPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // 移除原有的 floatingActionButtonLocation 和 floatingActionButton 属性
       body: Stack(
         children: [
           // 左右布局(导航栏+内容区)

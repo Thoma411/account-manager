@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-09 23:51:46
- * @LastEditTime: 2026-04-08 21:00:07
+ * @LastEditTime: 2026-04-08 21:51:27
  * @Description: main
  */
 
@@ -109,6 +109,23 @@ class VaultApp extends StatelessWidget {
             }
             return null; // 默认颜色
           }),
+        ),
+
+        // 反馈消息(悬浮圆角)
+        snackBarTheme: SnackBarThemeData(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          elevation: 4,
+          width: 400,
+          backgroundColor: const Color.fromARGB(255, 55, 55, 55),
+          contentTextStyle: const TextStyle(
+            fontFamily: 'Segoe UI', // 同步主字体
+            fontFamilyFallback: ['Microsoft YaHei'], // 同步备用中文
+            color: Colors.white,
+            fontSize: 14,
+          ),
         ),
 
         cardTheme: CardThemeData(
