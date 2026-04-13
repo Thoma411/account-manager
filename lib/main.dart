@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-09 23:51:46
- * @LastEditTime: 2026-04-08 21:51:27
+ * @LastEditTime: 2026-04-13 17:07:13
  * @Description: main
  */
 
@@ -12,17 +12,14 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'pages/login_page.dart';
 import 'pages/shell_page.dart';
 import 'services/storage_service.dart';
+import 'services/settings_service.dart';
 
 void main() async {
-  // 1. 确保 Flutter 引擎绑定
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // 2. 必须：先初始化 SQLite FFI 引擎，否则第 4 步会报错
-  sqfliteFfiInit();
+  WidgetsFlutterBinding.ensureInitialized(); // 确保Flutter引擎绑定
+  sqfliteFfiInit(); // 初始化SQLite FFI引擎
   databaseFactory = databaseFactoryFfi;
-
-  // 3. 初始化窗口管理器
-  await windowManager.ensureInitialized();
+  await SettingsService().init(); // 加载本地配置
+  await windowManager.ensureInitialized(); // 初始化窗口管理器
 
   WindowOptions windowOptions = const WindowOptions(
     size: Size(800, 600),

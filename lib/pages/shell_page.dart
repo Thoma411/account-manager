@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-04-08 21:23:02
+ * @LastEditTime: 2026-04-13 17:10:31
  * @Description: 主框架
  */
 
@@ -96,8 +96,7 @@ class _ShellPageState extends State<ShellPage> {
   // 迁移导航守卫逻辑
   void _onDestinationSelected(int index) async {
     bool hasDb = await StorageService().isDatabaseExists();
-    if (!hasDb && index != 0) {
-      // !暂时限制未建库用户进入设置页
+    if (!hasDb && index != 0 && index != 4) {
       if (!mounted) return;
       showDialog(
         context: context,

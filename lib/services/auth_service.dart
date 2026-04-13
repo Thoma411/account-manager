@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-04-08 18:02:45
+ * @LastEditTime: 2026-04-13 17:08:29
  * @Description: 解锁与认证
  */
 
@@ -41,7 +41,7 @@ class AuthService {
       if (verifyResult == "VAULT_READY") {
         // 5. 验证通过, 把DK存入内存供全应用使用
         _sec.setDK(dk);
-        await SettingsService().loadSettings();
+        await SettingsService().loadDbSettings();
         return true;
       }
       return false;

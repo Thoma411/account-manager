@@ -1,11 +1,12 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-04-08 17:43:09
- * @LastEditTime: 2026-04-08 18:04:00
+ * @LastEditTime: 2026-04-13 17:09:21
  * @Description: 设置
  */
 
 import 'package:sqflite/sqflite.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'security_service.dart';
 import 'storage_service.dart';
@@ -15,61 +16,77 @@ class SettingsService {
   factory SettingsService() => _instance;
   SettingsService._internal();
 
-  final StorageService _storage = StorageService();
-  final SecurityService _sec = SecurityService();
+  SharedPreferences? _prefs;
+  final Map<String, String> _dbCache = {}; // 内存缓存数据库项
 
-  // 内存缓存: 所有配置项都存在这里
-  final Map<String, String> _cache = {};
+  // 定义哪些 Key 属于本地配置（不进数据库）
+  final Set<String> _localKeys = {'dark_mode', 'language', 'window_size'};
 
-  // 1. 初始化: 从数据库全量加载到内存
-  Future<void> loadSettings() async {
-    final db = await _storage.database;
+  // 1. 初始化：应用启动即调用
+  Future<void> init() async {
+    _prefs = await SharedPreferences.getInstance();
+  }
+
+  // 2. 加载数据库项：仅在解锁成功后调用
+  Future<void> loadDbSettings() async {
+    if (!await StorageService().isDatabaseExists()) return;
+
+    final db = await StorageService().database;
     final List<Map<String, dynamic>> maps = await db.query('app_settings');
 
-    _cache.clear();
+    _dbCache.clear();
+    final sec = SecurityService();
+    final dk = sec.currentDataKey;
+
     for (var map in maps) {
       String key = map['key'];
       String value = map['value'];
-      bool isEncrypted = map['is_encrypted'] == 1;
-
-      // 如果是加密项, 则尝试解密
-      if (isEncrypted) {
-        final dk = _sec.currentDataKey;
-        if (dk != null) {
-          try {
-            value = _sec.decrypt(value, dk);
-          } catch (_) {}
-        }
+      // 处理加密项
+      if (map['is_encrypted'] == 1 && dk != null) {
+        try {
+          value = sec.decrypt(value, dk);
+        } catch (_) {}
       }
-      _cache[key] = value;
+      _dbCache[key] = value;
     }
   }
 
-  // 2. 读取配置 (从内存读, 极快)
+  // 3. 统一读取
   String? get(String key, {String? defaultValue}) {
-    return _cache[key] ?? defaultValue;
+    if (_localKeys.contains(key)) {
+      return _prefs?.getString(key) ?? defaultValue;
+    }
+    return _dbCache[key] ?? defaultValue;
   }
 
-  // 3. 写入配置 (内存先变, 异步写盘)
+  // 4. 统一写入
   Future<void> set(String key, String value, {bool isEncrypted = false}) async {
-    // 更新缓存
-    _cache[key] = value;
+    // 路径 A: 本地配置项
+    if (_localKeys.contains(key)) {
+      await _prefs?.setString(key, value);
+      return;
+    }
 
-    // 准备持久化内容
+    // 路径 B: 数据库配置项
+    // 检查：如果数据库还没创建，拦截写入，防止非法建库
+    if (!await StorageService().isDatabaseExists()) {
+      throw Exception("请先初始化保险箱，再修改同步类设置项");
+    }
+
+    _dbCache[key] = value;
     String valueToSave = value;
     if (isEncrypted) {
-      final dk = _sec.currentDataKey;
+      final dk = SecurityService().currentDataKey;
       if (dk != null) {
-        valueToSave = _sec.encrypt(value, dk);
+        valueToSave = SecurityService().encrypt(value, dk);
       }
     }
 
-    // 异步写入数据库, 不阻塞 UI
-    final db = await _storage.database;
-    await db.insert(
-      'app_settings',
-      {'key': key, 'value': valueToSave, 'is_encrypted': isEncrypted ? 1 : 0},
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    final db = await StorageService().database;
+    await db.insert('app_settings', {
+      'key': key,
+      'value': valueToSave,
+      'is_encrypted': isEncrypted ? 1 : 0,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 }
