@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-04-13 17:10:31
+ * @LastEditTime: 2026-04-14 20:43:33
  * @Description: 主框架
  */
 
@@ -12,7 +12,9 @@ import 'account_list_page.dart';
 import '../models/account.dart';
 import '../services/storage_service.dart';
 import '../services/settings_service.dart';
+import '../services/webdav_service.dart';
 import '../services/csv_service.dart';
+import '../utils/utils.dart';
 
 class ShellPage extends StatefulWidget {
   const ShellPage({super.key});
@@ -301,19 +303,152 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   final _settings = SettingsService();
-  bool _isDarkMode = false;
+  bool _isDarkMode = false; // 深色模式
+  bool _hasDb = false; // 控制WebDAV按钮
 
   @override
   void initState() {
     super.initState();
-    // 从已经 loadSettings 加载好的缓存中获取值
+    // 从已经loadSettings加载好的缓存中获取值
     _isDarkMode = _settings.get('dark_mode') == 'true';
+    _checkDbStatus();
   }
 
   void _toggleDarkMode(bool value) async {
     setState(() => _isDarkMode = value);
     // 异步存入数据库
     await _settings.set('dark_mode', value.toString());
+  }
+
+  // 检查数据库状态 决定是否允许配置WebDAV
+  void _checkDbStatus() async {
+    bool exists = await StorageService().isDatabaseExists();
+    setState(() {
+      _hasDb = exists;
+    });
+  }
+  // TODO: 建库后应立即刷新状态, 使能够立刻配置webdav
+
+  // 弹出 WebDAV 配置对话框
+  void _showWebDavDialog() {
+    final urlController = TextEditingController(
+      text: _settings.get('webdav_url'),
+    );
+    final userController = TextEditingController(
+      text: _settings.get('webdav_user'),
+    );
+    final pwdController = TextEditingController(
+      text: _settings.get('webdav_pwd'),
+    );
+    final webdav = WebDavService();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("配置WebDAV云同步"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              "建议使用坚果云等支持WebDAV的网盘。同步数据将以加密形式上传。",
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: urlController,
+              decoration: const InputDecoration(
+                labelText: "服务器地址 (如: https://dav.jianguoyun.com/dav/)",
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: userController,
+              decoration: const InputDecoration(labelText: "账号 (邮箱)"),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: pwdController,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: "应用密码"),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("取消"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              // 1. 临时初始化客户端进行测试
+              webdav.initCustomClient(
+                urlController.text,
+                userController.text,
+                pwdController.text,
+              );
+              // 2. 显示进度提示
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text("正在测试连接...")));
+              bool isOk = await webdav.ping();
+              if (!isOk) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text("连接失败，请检查配置")));
+                return;
+              }
+              // 3. 测试通过, 保存
+              await _settings.set('webdav_url', urlController.text);
+              await _settings.set('webdav_user', userController.text);
+              await _settings.set(
+                'webdav_pwd',
+                pwdController.text,
+                isEncrypted: true,
+              ); // 密码项设置加密
+
+              if (!context.mounted) return;
+              Navigator.pop(context);
+              MessageUtil.show(context, "同步配置已加密保存");
+              // 4. 引导初次备份
+              _showInitialUploadDialog();
+            },
+            child: const Text("保存配置"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 引导首次备份对话框
+  void _showInitialUploadDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("连接成功"),
+        content: const Text("配置已保存。是否立即将当前本地数据库上传到云端？"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("暂不"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                final path = await StorageService().getDatabasePath();
+                await WebDavService().uploadVault(path);
+                if (!context.mounted) return;
+                Navigator.pop(context);
+                MessageUtil.show(context, "首次备份完成！");
+              } catch (e) {
+                MessageUtil.show(context, "备份失败: $e");
+              }
+            },
+            child: const Text("立即备份"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -328,10 +463,23 @@ class _SettingsPageState extends State<SettingsPage> {
         const SizedBox(height: 20),
         SwitchListTile(
           title: const Text("深色模式"),
-          subtitle: const Text("测试配置持久化架构"),
+          // subtitle: const Text("测试配置持久化架构"),
           value: _isDarkMode,
           onChanged: _toggleDarkMode,
           secondary: const Icon(Icons.brightness_6),
+        ),
+        const Divider(),
+        const Text(
+          "数据同步",
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+        ListTile(
+          title: const Text("云端WebDAV配置"),
+          subtitle: Text(_hasDb ? "已解锁，可配置云备份凭据" : "请先初始化数据库"),
+          leading: const Icon(Icons.cloud_queue),
+          enabled: _hasDb,
+          onTap: _hasDb ? _showWebDavDialog : null,
         ),
         const Divider(),
         const ListTile(

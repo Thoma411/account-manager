@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-03-21 21:08:01
+ * @LastEditTime: 2026-04-14 21:04:54
  * @Description: 账户信息页(查看页)
  */
 
@@ -9,10 +9,12 @@ import 'dart:convert';
 import 'package:encrypt/encrypt.dart' as enc;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:webdav_client/webdav_client.dart' as dav;
 
 import '../models/account.dart'; // 导入模型
 import '../services/storage_service.dart'; // 导入存储服务
 import '../services/security_service.dart'; // 导入安全服务
+import '../services/webdav_service.dart';
 import '../utils/utils.dart'; // 导入工具箱
 
 class AccountListPage extends StatefulWidget {
@@ -278,7 +280,7 @@ class _AccountListPageState extends State<AccountListPage> {
                 const SizedBox(width: 20),
                 OutlinedButton.icon(
                   onPressed: () {
-                    // TODO: 跳转到云端同步页面
+                    _showRestoreFromCloudDialog();
                   },
                   icon: const Icon(Icons.cloud_download_outlined),
                   label: const Text("从云端恢复备份"),
@@ -602,6 +604,90 @@ class _AccountListPageState extends State<AccountListPage> {
               }
             },
             child: const Text("开始创建"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 创建云端同步对话框
+  void _showRestoreFromCloudDialog() {
+    final urlController = TextEditingController();
+    final userController = TextEditingController();
+    final pwdController = TextEditingController();
+    final webdav = WebDavService();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text("从云端拉取备份"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("请输入您的WebDAV配置信息以连接云盘。"),
+            const SizedBox(height: 20),
+            TextField(
+              controller: urlController,
+              decoration: const InputDecoration(labelText: "服务器地址"),
+            ),
+            TextField(
+              controller: userController,
+              decoration: const InputDecoration(labelText: "账号"),
+            ),
+            TextField(
+              controller: pwdController,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: "应用密码"),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("取消"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                // 尝试连接
+                webdav.initCustomClient(
+                  urlController.text,
+                  userController.text,
+                  pwdController.text,
+                );
+                List<dav.File> files;
+                try {
+                  files = await webdav.readDir('/vault_keeper');
+                } catch (e) {
+                  throw Exception("无法访问云端目录/vault_keeper，请确认目录已手动创建或执行过备份。");
+                }
+                // 3. 检查文件是否存在
+                bool fileExists = files.any((f) => f.name == 'vault_keeper.db');
+                if (!fileExists) {
+                  throw Exception("云端目录中未找到vault_keeper.db");
+                }
+                // bool isOk = await webdav.ping();
+                // if (!isOk) throw Exception("连接失败，请检查配置或网络");
+                // 获取本地存放路径
+                final localPath = await StorageService().getDatabasePath();
+                await webdav.downloadVault(localPath); // 下载
+                if (!context.mounted) return;
+                Navigator.pop(context); // 关闭配置弹窗
+                // 下载成功后，由于本地有了.db，自动引导至解锁流程
+                MessageUtil.show(context, "备份已下载，请使用原主密码解锁");
+                // TODO: 触发一次状态检查，让 UI 变成"老用户解锁"状态
+                // 或者简单点，直接重启应用/重新加载 main
+                await _checkDbStatus();
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text("恢复失败: $e")));
+                }
+              }
+            },
+            child: const Text("开始恢复"),
           ),
         ],
       ),
