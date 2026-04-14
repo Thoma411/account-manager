@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-04-14 20:43:33
+ * @LastEditTime: 2026-04-14 21:31:14
  * @Description: 主框架
  */
 
@@ -86,6 +86,7 @@ class _ShellPageState extends State<ShellPage> {
             left: 15, // 距离左边距离
             bottom: 25, // 距离底部距离
             child: FloatingActionButton(
+              heroTag: "add_account_fab",
               onPressed: _showAddAccountDialog,
               child: const Icon(Icons.add),
             ),

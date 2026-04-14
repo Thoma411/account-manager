@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-04-14 21:04:54
+ * @LastEditTime: 2026-04-14 21:31:11
  * @Description: 账户信息页(查看页)
  */
 
@@ -179,6 +179,7 @@ class _AccountListPageState extends State<AccountListPage> {
       child: Scaffold(
         floatingActionButton: FloatingActionButton(
           mini: true,
+          heroTag: "refresh_list_fab",
           onPressed: _refreshAccountList,
           child: const Icon(Icons.refresh),
         ),
