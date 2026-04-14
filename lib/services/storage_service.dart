@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-04-08 17:41:36
+ * @LastEditTime: 2026-04-14 17:57:16
  * @Description: 与SQLite交互的方法
  */
 
@@ -25,14 +25,18 @@ class StorageService {
     return _database!;
   }
 
+  // 获取数据库的完整物理路径
+  Future<String> getDatabasePath() async {
+    sqfliteFfiInit();
+    var databaseFactory = databaseFactoryFfi;
+    final dbPath = await databaseFactory.getDatabasesPath();
+    return join(dbPath, 'vault_keeper.db');
+  }
+
+  // 判断数据库是否存在
   Future<bool> isDatabaseExists() async {
     try {
-      sqfliteFfiInit(); // 获取数据库所在目录
-      var databaseFactory = databaseFactoryFfi;
-      final dbPath = await databaseFactory.getDatabasesPath();
-      final path = join(dbPath, 'vault_keeper.db'); // 拼接完整路径
-
-      return await File(path).exists(); // 检查文件是否存在
+      return await File(await getDatabasePath()).exists();
     } catch (e) {
       debugPrint("探测数据库失败: $e");
       return false;
