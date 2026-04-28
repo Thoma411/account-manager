@@ -1,12 +1,13 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-04-13 18:19:04
- * @LastEditTime: 2026-04-14 20:49:24
+ * @LastEditTime: 2026-04-15 21:16:59
  * @Description: webdav
  */
 
 import 'dart:io';
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:webdav_client/webdav_client.dart' as dav;
 
@@ -56,6 +57,19 @@ class WebDavService {
     } catch (e) {
       return false;
     }
+  }
+
+  // 获取云端备份文件的元数据 (用于 SyncPage 对比时间)
+  Future<dav.File?> getRemoteVaultInfo() async {
+    try {
+      final files = await readDir('/vault_keeper');
+      for (var f in files) {
+        if (f.name == 'vault_keeper.db') return f;
+      }
+    } catch (e) {
+      debugPrint("WebDAV: 未找到远程备份文件或目录: $e");
+    }
+    return null;
   }
 
   // 读取云端目录

@@ -1,10 +1,11 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-04-14 21:31:14
+ * @LastEditTime: 2026-04-16 17:06:47
  * @Description: 主框架
  */
 
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
@@ -29,7 +30,7 @@ class _ShellPageState extends State<ShellPage> {
   // 页面列表
   final List<Widget> _pages = [
     const AccountListPage(),
-    const Center(child: Text("云同步 (开发中)")),
+    const SyncPage(),
     const MigrationPage(),
     const Center(child: Text("回收站 (开发中)")),
     const SettingsPage(),
@@ -294,7 +295,7 @@ class _ShellPageState extends State<ShellPage> {
   }
 }
 
-// 设置页面
+// 设置界面
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
@@ -302,6 +303,7 @@ class SettingsPage extends StatefulWidget {
   State<SettingsPage> createState() => _SettingsPageState();
 }
 
+// 设置界面
 class _SettingsPageState extends State<SettingsPage> {
   final _settings = SettingsService();
   bool _isDarkMode = false; // 深色模式
@@ -493,6 +495,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 }
 
+// 导入导出界面
 class MigrationPage extends StatelessWidget {
   const MigrationPage({super.key});
 
@@ -537,6 +540,234 @@ class MigrationPage extends StatelessWidget {
   }
 }
 
+// 云同步界面
+class SyncPage extends StatefulWidget {
+  const SyncPage({super.key});
+
+  @override
+  State<SyncPage> createState() => _SyncPageState();
+}
+
+// 云同步界面
+class _SyncPageState extends State<SyncPage> {
+  final _webdav = WebDavService();
+  final _storage = StorageService();
+
+  bool _isLoading = false;
+  String? _localInfo, _remoteInfo;
+  DateTime? _localTime, _remoteTime;
+  int? _localSize, _remoteSize;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshStatus();
+  }
+
+  // 刷新本地与远程的状态
+  Future<void> _refreshStatus() async {
+    setState(() => _isLoading = true);
+    try {
+      // 1. 获取本地信息
+      final localPath = await _storage.getDatabasePath();
+      final localFile = File(localPath);
+      if (await localFile.exists()) {
+        final stat = await localFile.stat();
+        _localTime = stat.modified;
+        _localSize = stat.size;
+      }
+
+      // 2. 获取远程信息
+      final remoteFile = await _webdav.getRemoteVaultInfo();
+      if (remoteFile != null) {
+        _remoteTime = remoteFile.mTime;
+        _remoteSize = remoteFile.size;
+      }
+      _localInfo = _localTime != null
+          ? "最后修改: ${DateUtil.format(_localTime!.toIso8601String())}"
+          : "本地无库";
+      _remoteInfo = _remoteTime != null
+          ? "最后备份: ${DateUtil.format(_remoteTime!.toIso8601String())}"
+          : "云端无备份";
+    } catch (e) {
+      if (mounted) MessageUtil.show(context, "获取同步状态失败: $e");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(32.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "云同步仪表盘",
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 30),
+          // 核心对比区域
+          Row(
+            children: [
+              _buildStatusCard(
+                "当前设备",
+                Icons.computer,
+                _localInfo,
+                _localSize,
+                Colors.blue,
+              ),
+              _buildSyncIndicator(),
+              _buildStatusCard(
+                "云端备份",
+                Icons.cloud_done,
+                _remoteInfo,
+                _remoteSize,
+                Colors.blue,
+              ),
+            ],
+          ),
+          const SizedBox(height: 50),
+          // 操作按钮区
+          Center(
+            child: Column(
+              children: [
+                _buildSmartSyncButton(),
+                const SizedBox(height: 20),
+                const Text(
+                  "点击“一键同步”，系统将根据修改时间自动决定上传或下载",
+                  style: TextStyle(color: Colors.grey, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          const Spacer(),
+          // 危险操作区
+          const Divider(),
+          const Text("高级/强制操作", style: TextStyle(color: Colors.grey)),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              TextButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.upload),
+                label: const Text("强制上传覆盖云端"),
+              ),
+              const SizedBox(width: 20),
+              TextButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.download),
+                label: const Text("强制下载覆盖本地"),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 构建状态卡片
+  Widget _buildStatusCard(
+    String title,
+    IconData icon,
+    String? info,
+    int? size,
+    Color color,
+  ) {
+    return Expanded(
+      child: Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(color: color.withValues(alpha: 0.2), width: 1),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            children: [
+              Icon(icon, size: 48, color: color),
+              const SizedBox(height: 16),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                info ?? "加载中...",
+                style: const TextStyle(fontSize: 13, color: Colors.black87),
+              ),
+              if (size != null)
+                Text(
+                  "文件大小: ${(size / 1024).toStringAsFixed(1)} KB",
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 中间的箭头/状态指示
+  Widget _buildSyncIndicator() {
+    IconData arrowIcon = Icons.sync_alt;
+    Color arrowColor = Colors.grey;
+
+    if (_localTime != null && _remoteTime != null) {
+      if (_localTime!.isAfter(_remoteTime!)) {
+        arrowIcon = Icons.arrow_forward; // 本地新 -> 需上传
+        arrowColor = Colors.blue;
+      } else if (_remoteTime!.isAfter(_localTime!)) {
+        arrowIcon = Icons.arrow_back; // 云端新 -> 需下载
+        arrowColor = Colors.green;
+      }
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        children: [
+          if (_isLoading)
+            const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else
+            Icon(arrowIcon, size: 32, color: arrowColor),
+        ],
+      ),
+    );
+  }
+
+  // 一键同步按钮
+  Widget _buildSmartSyncButton() {
+    String label = "一键同步";
+    if (_localTime != null && _remoteTime != null) {
+      if (_localTime!.isAtSameMomentAs(_remoteTime!)) {
+        label = "已是最新版本";
+      } else if (_localTime!.isAfter(_remoteTime!)) {
+        label = "上传本地更新";
+      } else {
+        label = "拉取云端更新";
+      }
+    }
+    return ElevatedButton.icon(
+      onPressed: _isLoading ? null : _refreshStatus, // 暂时仅绑定刷新逻辑
+      icon: const Icon(Icons.auto_fix_high),
+      label: Text(label, style: const TextStyle(fontSize: 18)),
+      style: ElevatedButton.styleFrom(
+        minimumSize: const Size(300, 60),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+      ),
+    );
+  }
+}
+
+// 回收站界面
 class TrashPage extends StatelessWidget {
   const TrashPage({super.key});
   @override
