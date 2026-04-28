@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-04-13 18:19:04
- * @LastEditTime: 2026-04-15 21:16:59
+ * @LastEditTime: 2026-04-28 17:20:23
  * @Description: webdav
  */
 
@@ -17,25 +17,21 @@ class WebDavService {
   static final WebDavService _instance = WebDavService._internal();
   factory WebDavService() => _instance;
   WebDavService._internal();
-
   dav.Client? _client;
-  String? _tempUrl, _tempUser, _tempPwd; // 用于恢复流程的临时凭据缓存
+  // 统一存储当前生效的凭据（无论是临时的还是持久化的）
+  String? _currentUrl, _currentUser, _currentPwd;
 
-  // 确保url以斜杠结尾
-  String _normalizeUrl(String url) {
-    return url.endsWith('/') ? url : '$url/';
-  }
-
-  // 初始化客户端 (通用)
+  // 1.初始化逻辑 (收口)
+  // 手动初始化（用于登录前恢复或设置页测试）
   void initCustomClient(String url, String user, String password) {
-    _tempUrl = url;
-    _tempUser = user;
-    _tempPwd = password;
-    _client = dav.newClient(url, user: user, password: password);
+    _currentUrl = url.endsWith('/') ? url : '$url/';
+    _currentUser = user;
+    _currentPwd = password;
+    _client = dav.newClient(_currentUrl!, user: user, password: password);
     _client!.setConnectTimeout(8000);
   }
 
-  /// 初始化客户端: 从SettingsService读取配置
+  // 自动初始化（从本地加密库读取）
   bool initFromSettings() {
     final settings = SettingsService();
     final url = settings.get('webdav_url');
@@ -47,80 +43,71 @@ class WebDavService {
     return true;
   }
 
-  /// 测试连接
+  // 私有校验: 确保在执行任何网络操作前Client已就绪
+  bool _ensureClient() {
+    if (_client != null) return true;
+    return initFromSettings();
+  }
+
+  // 2.业务查询接口(语义化封装)
+  // 测试连通性: 仅用于验证凭据是否正确
   Future<bool> ping() async {
-    if (_client == null && !initFromSettings()) return false;
+    if (!_ensureClient()) return false;
     try {
       // 尝试列出根目录, 若不报错则说明账号密码正确
       await _client!.readDir('/');
       return true;
-    } catch (e) {
+    } catch (_) {
       return false;
     }
   }
 
-  // 获取云端备份文件的元数据 (用于 SyncPage 对比时间)
+  // 获取云端备份文件元数据(专供SyncPage对比使用)
   Future<dav.File?> getRemoteVaultInfo() async {
     try {
-      final files = await readDir('/vault_keeper');
+      final List<dav.File> files = await readDir('/vault_keeper');
       for (var f in files) {
         if (f.name == 'vault_keeper.db') return f;
       }
     } catch (e) {
-      debugPrint("WebDAV: 未找到远程备份文件或目录: $e");
+      debugPrint("WebDAV: 无法定位远程文件: $e");
     }
     return null;
   }
 
-  // 读取云端目录
+  // 基础读取接口
   Future<List<dav.File>> readDir(String path) async {
-    if (_client == null && !initFromSettings()) {
-      throw Exception("WebDAV客户端未初始化");
-    }
+    if (!_ensureClient()) throw Exception("WebDAV 客户端未初始化，请先配置云端信息");
     return await _client!.readDir(path);
   }
 
-  // 上传至云端（使用SettingsService中的已存配置）
+  // 3.核心传输接口(HTTP 协议层)
+  // 上传至云端
   Future<void> uploadVault(String localPath) async {
-    if (_client == null) initFromSettings();
+    if (!_ensureClient()) throw Exception("客户端未就绪");
+    // 预建目录
     try {
       await _client!.mkdir('/vault_keeper');
     } catch (_) {}
-
-    final s = SettingsService();
-    return _doHttpRequest(
-      url: s.get('webdav_url')!,
-      user: s.get('webdav_user')!,
-      pwd: s.get('webdav_pwd')!,
-      method: 'PUT',
-      localPath: localPath,
-    );
+    return _doHttpRequest(method: 'PUT', localPath: localPath);
   }
 
-  // 下载至本地（优先使用临时凭据, 若无则使用已存配置）
+  // 下载至本地
   Future<void> downloadVault(String localPath) async {
-    final s = SettingsService();
-    return _doHttpRequest(
-      url: _tempUrl ?? s.get('webdav_url')!,
-      user: _tempUser ?? s.get('webdav_user')!,
-      pwd: _tempPwd ?? s.get('webdav_pwd')!,
-      method: 'GET',
-      localPath: localPath,
-    );
+    if (!_ensureClient()) throw Exception("客户端未就绪");
+    return _doHttpRequest(method: 'GET', localPath: localPath);
   }
 
-  // 统一低层HTTP处理
+  // 统一处理 HTTP PUT/GET 逻辑
   Future<void> _doHttpRequest({
-    required String url,
-    required String user,
-    required String pwd,
     required String method,
     required String localPath,
   }) async {
-    final auth = 'Basic ${base64.encode(utf8.encode('$user:$pwd'))}';
-    final targetUri = Uri.parse(
-      '${_normalizeUrl(url)}vault_keeper/vault_keeper.db',
-    );
+    // 此时 _currentXXX 必不为空，因为 _ensureClient 已经执行过
+    final auth =
+        'Basic ${base64.encode(utf8.encode('$_currentUser:$_currentPwd'))}';
+    final targetUri = Uri.parse('${_currentUrl!}vault_keeper/vault_keeper.db');
+
     if (method == 'PUT') {
       final bytes = await File(localPath).readAsBytes();
       final res = await http.put(
