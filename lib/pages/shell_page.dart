@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-04-28 16:17:55
+ * @LastEditTime: 2026-04-28 16:30:57
  * @Description: 主框架
  */
 
@@ -632,7 +632,7 @@ class _SyncPageState extends State<SyncPage> {
           ),
           const SizedBox(height: 24),
 
-          // 顶部对比卡片 (保持你的蓝色风格)
+          // 顶部对比卡片
           Row(
             children: [
               _buildStatusCard(
@@ -649,13 +649,13 @@ class _SyncPageState extends State<SyncPage> {
                 _remoteTime,
                 _remoteSize,
                 Colors.blue,
-              ), // 统一蓝色
+              ),
             ],
           ),
 
           const SizedBox(height: 32),
 
-          // 下方：左操作，右日志
+          // 下方: 左操作, 右日志
           Expanded(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -685,21 +685,29 @@ class _SyncPageState extends State<SyncPage> {
                         onPressed: () => _addLog("连接测试", "成功"),
                       ),
                       const SizedBox(height: 12),
-                      _buildActionButton(
-                        label: "强制上传覆盖云端",
-                        icon: Icons.upload,
-                        onPressed: () => _addLog("强制上传", "待确认"),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildActionButton(
-                        label: "强制下载覆盖本地",
-                        icon: Icons.download,
-                        onPressed: () => _addLog("强制下载", "待确认"),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildActionButton(
+                              label: "强制上传",
+                              icon: Icons.upload,
+                              onPressed: () => _addLog("强制上传", "待确认"),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: _buildActionButton(
+                              label: "强制下载",
+                              icon: Icons.download,
+                              onPressed: () => _addLog("强制下载", "待确认"),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-
                 const SizedBox(width: 40), // 左右间距
                 // 右侧日志区 (Flex 3)
                 Expanded(
@@ -748,7 +756,7 @@ class _SyncPageState extends State<SyncPage> {
     );
   }
 
-  // 辅助：构建按钮
+  // 构建按钮
   Widget _buildActionButton({
     required String label,
     required IconData icon,
@@ -761,25 +769,29 @@ class _SyncPageState extends State<SyncPage> {
       child: isPrimary
           ? FilledButton.icon(
               onPressed: onPressed,
-              icon: Icon(icon),
+              icon: Icon(icon, size: 18),
               label: Text(label),
             )
           : OutlinedButton.icon(
               onPressed: onPressed,
-              icon: Icon(icon, size: 20),
-              label: Text(label),
+              icon: Icon(icon, size: 16),
+              label: Text(label, style: const TextStyle(fontSize: 13)),
             ),
     );
   }
 
-  // 辅助：获取智能同步文字
+  // 获取智能同步文字
   String _getSmartSyncLabel() {
-    if (_localTime == null || _remoteTime == null) return "一键同步";
-    if (_localTime!.isAtSameMomentAs(_remoteTime!)) return "已是最新版本";
+    if (_localTime == null || _remoteTime == null) {
+      return "一键同步";
+    }
+    if (_localTime!.isAtSameMomentAs(_remoteTime!)) {
+      return "已是最新版本";
+    }
     return _localTime!.isAfter(_remoteTime!) ? "上传本地更新" : "拉取云端更新";
   }
 
-  // 辅助：构建日志列表
+  // 构建日志列表
   Widget _buildLogList() {
     if (_logs.isEmpty) {
       return const Center(
@@ -799,11 +811,6 @@ class _SyncPageState extends State<SyncPage> {
           ),
           title: Text("${log['action']} - ${log['status']}"),
           subtitle: Text(DateUtil.format(log['time'])),
-          trailing: const Icon(
-            Icons.chevron_right,
-            size: 14,
-            color: Colors.grey,
-          ),
         );
       },
     );
@@ -815,7 +822,7 @@ class _SyncPageState extends State<SyncPage> {
     return Icons.info_outline;
   }
 
-  // 原有 Card 构建方法 (更新为蓝色)
+  // Card构建方法
   Widget _buildStatusCard(
     String title,
     IconData icon,
@@ -860,7 +867,7 @@ class _SyncPageState extends State<SyncPage> {
     );
   }
 
-  // 原有箭头构建
+  // 箭头构建
   Widget _buildSyncIndicator() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
