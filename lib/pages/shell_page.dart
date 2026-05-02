@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-04-28 16:30:57
+ * @LastEditTime: 2026-05-02 16:57:10
  * @Description: 主框架
  */
 
@@ -100,22 +100,19 @@ class _ShellPageState extends State<ShellPage> {
 
   // 迁移导航守卫逻辑
   void _onDestinationSelected(int index) async {
+    final s = SettingsService();
+    bool hasWebDav = s.get('webdav_url') != null && s.get('webdav_pwd') != null;
     bool hasDb = await StorageService().isDatabaseExists();
+
+    // 情况1: 未建库 只允许留在主页
     if (!hasDb && index != 0 && index != 4) {
-      if (!mounted) return;
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text("功能受限"),
-          content: const Text("请先在主页创建新数据库"),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("确认"),
-            ),
-          ],
-        ),
-      );
+      _showGuardDialog("访问受限", "请先在主页创建新数据库");
+      return;
+    }
+
+    // 情况2: 未配WebDAV 进入云同步页
+    if (!hasWebDav && index == 1) {
+      _showGuardDialog("访问受限", "请先在设置中配置并连接 WebDAV 云盘");
       return;
     }
     setState(() => _selectedIndex = index);
@@ -126,19 +123,7 @@ class _ShellPageState extends State<ShellPage> {
     bool hasDb = await StorageService().isDatabaseExists(); // 检测数据库是否存在
     if (!mounted) return;
     if (!hasDb) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text("操作受阻"),
-          content: const Text("请先在主界面“创建新数据库”并设置主密码，然后再添加账户条目。"),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("确认"),
-            ),
-          ],
-        ),
-      );
+      _showGuardDialog("操作受阻", "请先在主界面“创建新数据库”并设置主密码，然后再添加账户条目。");
       return; // 拦截后续的新增逻辑
     }
 
@@ -292,6 +277,23 @@ class _ShellPageState extends State<ShellPage> {
           },
         );
       },
+    );
+  }
+
+  // 弹出功能受限对话框
+  void _showGuardDialog(String titleMsg, String contextMsg) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(titleMsg),
+        content: Text(contextMsg),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("确认"),
+          ),
+        ],
+      ),
     );
   }
 }
