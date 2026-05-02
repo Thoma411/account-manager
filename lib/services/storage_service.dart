@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-04-14 17:57:16
+ * @LastEditTime: 2026-05-02 23:07:26
  * @Description: 与SQLite交互的方法
  */
 
@@ -23,6 +23,15 @@ class StorageService {
     if (_database != null) return _database!;
     _database = await _initDB();
     return _database!;
+  }
+
+  // 关闭数据库连接并释放文件句柄
+  Future<void> closeDatabase() async {
+    if (_database != null && _database!.isOpen) {
+      await _database!.close();
+      _database = null; // 必须置空，以便下次调用 database 属性时触发 _initDB
+      debugPrint("数据库连接已安全关闭");
+    }
   }
 
   // 获取数据库的完整物理路径
