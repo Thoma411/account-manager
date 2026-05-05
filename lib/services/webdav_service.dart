@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-04-13 18:19:04
- * @LastEditTime: 2026-04-28 17:20:23
+ * @LastEditTime: 2026-05-02 23:10:52
  * @Description: webdav
  */
 
@@ -12,6 +12,7 @@ import 'package:http/http.dart' as http;
 import 'package:webdav_client/webdav_client.dart' as dav;
 
 import 'settings_service.dart';
+import 'storage_service.dart';
 
 class WebDavService {
   static final WebDavService _instance = WebDavService._internal();
@@ -81,6 +82,28 @@ class WebDavService {
     return await _client!.readDir(path);
   }
 
+  // 本地云端版本比较
+  Future<SyncDecision> compareVersions({int t = 1000}) async {
+    try {
+      final localPath = await StorageService().getDatabasePath();
+      final localFile = File(localPath);
+      if (!await localFile.exists()) return SyncDecision.error;
+
+      final localMTime = (await localFile.stat()).modified;
+      final remoteFile = await getRemoteVaultInfo();
+
+      if (remoteFile == null) return SyncDecision.noRemote;
+
+      // 为了防止毫秒级的微小差异, 可忽略t(ms)内的偏差
+      final diff = localMTime.difference(remoteFile.mTime!).inMilliseconds;
+      if (diff > t) return SyncDecision.localNewer;
+      if (diff < -t) return SyncDecision.remoteNewer;
+      return SyncDecision.bothSynced;
+    } catch (e) {
+      return SyncDecision.error;
+    }
+  }
+
   // 3.核心传输接口(HTTP 协议层)
   // 上传至云端
   Future<void> uploadVault(String localPath) async {
@@ -130,4 +153,12 @@ class WebDavService {
       }
     }
   }
+}
+
+enum SyncDecision {
+  localNewer, // 本地较新 建议上传
+  remoteNewer, // 云端较新 建议下载
+  bothSynced, // 已同步
+  noRemote, // 云端无备份
+  error, // 检测出错
 }

@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-05-02 16:57:10
+ * @LastEditTime: 2026-05-05 18:06:16
  * @Description: 主框架
  */
 
@@ -621,6 +621,67 @@ class _SyncPageState extends State<SyncPage> {
     }
   }
 
+  // 处理测试连接
+  Future<void> _handlePing() async {
+    setState(() => _isLoading = true);
+    _addLog("连接测试", "正在连接...");
+    bool ok = await _webdav.ping();
+    _addLog("连接测试", ok ? "成功" : "失败，请检查配置");
+    setState(() => _isLoading = false);
+  }
+
+  // 处理智能同步逻辑
+  Future<void> _handleSmartSync() async {
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
+    _addLog("智能同步", "正在对比版本...");
+
+    final decision = await _webdav.compareVersions();
+    final localPath = await _storage.getDatabasePath();
+
+    try {
+      if (decision == SyncDecision.localNewer ||
+          decision == SyncDecision.noRemote) {
+        await _webdav.uploadVault(localPath);
+        _addLog("智能同步", "完成：本地库已备份至云端");
+      } else if (decision == SyncDecision.remoteNewer) {
+        _addLog("智能同步", "中断：云端版本较新，需手动决策");
+        // 调用末尾的顶层冲突对话框
+        if (!mounted) return;
+        _showConflictDialog(
+          context: context,
+          onConfirmLocal: () => _handleForceAction(true),
+          onConfirmRemote: () => _handleForceAction(false),
+        );
+      } else if (decision == SyncDecision.bothSynced) {
+        _addLog("智能同步", "无需操作：两端已同步");
+      }
+    } catch (e) {
+      _addLog("智能同步", "失败: $e");
+    } finally {
+      setState(() => _isLoading = false);
+      _refreshStatus();
+    }
+  }
+
+  // 处理强制上传/下载
+  Future<void> _handleForceAction(bool isUpload) async {
+    final path = await _storage.getDatabasePath();
+    try {
+      if (isUpload) {
+        await _webdav.uploadVault(path);
+        _addLog("强制操作", "已覆盖云端备份");
+      } else {
+        await _storage.closeDatabase(); // 覆盖前关闭本地连接
+        await _webdav.downloadVault(path);
+        _addLog("强制操作", "已从云端覆盖本地，请手动刷新列表");
+      }
+      _refreshStatus();
+    } catch (e) {
+      _addLog("强制操作", "失败: $e");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -672,7 +733,7 @@ class _SyncPageState extends State<SyncPage> {
                         label: _getSmartSyncLabel(),
                         icon: Icons.sync,
                         isPrimary: true,
-                        onPressed: () => _addLog("智能同步", "执行中..."),
+                        onPressed: _handleSmartSync,
                       ),
                       const SizedBox(height: 12),
                       const Text(
@@ -684,7 +745,7 @@ class _SyncPageState extends State<SyncPage> {
                       _buildActionButton(
                         label: "测试云端连接",
                         icon: Icons.lan_outlined,
-                        onPressed: () => _addLog("连接测试", "成功"),
+                        onPressed: _handlePing,
                       ),
                       const SizedBox(height: 12),
 
@@ -694,7 +755,7 @@ class _SyncPageState extends State<SyncPage> {
                             child: _buildActionButton(
                               label: "强制上传",
                               icon: Icons.upload,
-                              onPressed: () => _addLog("强制上传", "待确认"),
+                              onPressed: () => _handleForceAction(true),
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -702,7 +763,7 @@ class _SyncPageState extends State<SyncPage> {
                             child: _buildActionButton(
                               label: "强制下载",
                               icon: Icons.download,
-                              onPressed: () => _addLog("强制下载", "待确认"),
+                              onPressed: () => _handleForceAction(false),
                             ),
                           ),
                         ],
@@ -818,6 +879,7 @@ class _SyncPageState extends State<SyncPage> {
     );
   }
 
+  // 动态匹配图标
   IconData _getLogIcon(String action) {
     if (action.contains("上传")) return Icons.cloud_upload;
     if (action.contains("下载")) return Icons.cloud_download;
@@ -891,4 +953,39 @@ class TrashPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Center(child: Text("回收站"));
   }
+}
+
+void _showConflictDialog({
+  required BuildContext context,
+  required Function onConfirmLocal, // 本地覆盖云端
+  required Function onConfirmRemote, // 云端覆盖本地
+  // bool isSyncPage = false,
+}) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text("同步版本冲突"),
+      content: const Text("检测到本地与云端的数据库不一致。请选择保留哪个版本？\n\n注意：这会永久覆盖另一端的数据。"),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("取消"),
+        ),
+        TextButton(
+          onPressed: () {
+            Navigator.pop(context);
+            onConfirmLocal();
+          },
+          child: const Text("保留本地 (上传)", style: TextStyle(color: Colors.red)),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.pop(context);
+            onConfirmRemote();
+          },
+          child: const Text("保留云端 (下载)"),
+        ),
+      ],
+    ),
+  );
 }
