@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-04-13 18:19:04
- * @LastEditTime: 2026-05-02 23:10:52
+ * @LastEditTime: 2026-05-17 23:35:00
  * @Description: webdav
  */
 
@@ -83,7 +83,7 @@ class WebDavService {
   }
 
   // 本地云端版本比较
-  Future<SyncDecision> compareVersions({int t = 1000}) async {
+  Future<SyncDecision> compareVersions({int t = 15000}) async {
     try {
       final localPath = await StorageService().getDatabasePath();
       final localFile = File(localPath);

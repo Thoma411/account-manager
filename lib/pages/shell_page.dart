@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-05-05 18:06:16
+ * @LastEditTime: 2026-05-17 23:19:27
  * @Description: 主框架
  */
 
@@ -335,6 +335,46 @@ class _SettingsPageState extends State<SettingsPage> {
   }
   // TODO: 建库后应立即刷新状态, 使能够立刻配置webdav
 
+  // 在用户确认连接及冲突处理后正式将WebDAV凭据持久化到加密数据库中
+  Future<void> _finalizeWebDavSave(String url, String user, String pwd) async {
+    await _settings.set('webdav_url', url);
+    await _settings.set('webdav_user', user);
+    await _settings.set('webdav_pwd', pwd, isEncrypted: true);
+    _checkDbStatus(); // 刷新本页的 hasDb 状态，解除按钮禁用
+  }
+
+  // 在云端完全没有备份时引导用户进行首次上传
+  void _showInitialUploadPrompt(String url, String user, String pwd) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("连接成功"),
+        content: const Text("配置已保存。云端目前没有备份，是否立即将当前本地数据库上传到云端？"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("暂不"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await _finalizeWebDavSave(url, user, pwd);
+                final path = await StorageService().getDatabasePath();
+                await WebDavService().uploadVault(path);
+                if (!context.mounted) return;
+                Navigator.pop(context);
+                MessageUtil.show(context, "首次备份完成！");
+              } catch (e) {
+                MessageUtil.show(context, "备份失败: $e");
+              }
+            },
+            child: const Text("立即备份"),
+          ),
+        ],
+      ),
+    );
+  }
+
   // 弹出 WebDAV 配置对话框
   void _showWebDavDialog() {
     final urlController = TextEditingController(
@@ -404,53 +444,54 @@ class _SettingsPageState extends State<SettingsPage> {
                 ).showSnackBar(const SnackBar(content: Text("连接失败，请检查配置")));
                 return;
               }
-              // 3. 测试通过, 保存
-              await _settings.set('webdav_url', urlController.text);
-              await _settings.set('webdav_user', userController.text);
-              await _settings.set(
-                'webdav_pwd',
-                pwdController.text,
-                isEncrypted: true,
-              ); // 密码项设置加密
-
+              // 3. 探测云端是否有库
+              final remoteInfo = await webdav.getRemoteVaultInfo();
               if (!context.mounted) return;
-              Navigator.pop(context);
-              MessageUtil.show(context, "同步配置已加密保存");
-              // 4. 引导初次备份
-              _showInitialUploadDialog();
-            },
-            child: const Text("保存配置"),
-          ),
-        ],
-      ),
-    );
-  }
+              Navigator.pop(context); // 关闭配置对话框
 
-  // 引导首次备份对话框
-  void _showInitialUploadDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("连接成功"),
-        content: const Text("配置已保存。是否立即将当前本地数据库上传到云端？"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("暂不"),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                final path = await StorageService().getDatabasePath();
-                await WebDavService().uploadVault(path);
-                if (!context.mounted) return;
-                Navigator.pop(context);
-                MessageUtil.show(context, "首次备份完成！");
-              } catch (e) {
-                MessageUtil.show(context, "备份失败: $e");
+              if (remoteInfo != null) {
+                // 云端已有库，引导冲突处理
+                _showConflictDialog(
+                  context: context,
+                  onConfirmLocal: () async {
+                    await _finalizeWebDavSave(
+                      urlController.text,
+                      userController.text,
+                      pwdController.text,
+                    );
+                    await WebDavService().uploadVault(
+                      await StorageService().getDatabasePath(),
+                    );
+                    if (context.mounted) {
+                      MessageUtil.show(context, "配置已保存，云端已覆盖");
+                    }
+                  },
+                  onConfirmRemote: () async {
+                    await _finalizeWebDavSave(
+                      urlController.text,
+                      userController.text,
+                      pwdController.text,
+                    );
+                    await StorageService().closeDatabase();
+                    await WebDavService().downloadVault(
+                      await StorageService().getDatabasePath(),
+                    );
+                    if (context.mounted) {
+                      MessageUtil.show(context, "配置已保存，数据已同步，请重启应用");
+                    }
+                  },
+                );
+              } else {
+                // 云端无库，引导首次备份
+                // 注意：此处 text 内容已按要求保持，但作为参数传递
+                _showInitialUploadPrompt(
+                  urlController.text,
+                  userController.text,
+                  pwdController.text,
+                );
               }
             },
-            child: const Text("立即备份"),
+            child: const Text("保存配置"),
           ),
         ],
       ),
@@ -957,12 +998,12 @@ class TrashPage extends StatelessWidget {
 
 void _showConflictDialog({
   required BuildContext context,
-  required Function onConfirmLocal, // 本地覆盖云端
-  required Function onConfirmRemote, // 云端覆盖本地
-  // bool isSyncPage = false,
+  required VoidCallback onConfirmLocal, // 本地覆盖云端
+  required VoidCallback onConfirmRemote, // 云端覆盖本地
 }) {
   showDialog(
     context: context,
+    barrierDismissible: false,
     builder: (context) => AlertDialog(
       title: const Text("同步版本冲突"),
       content: const Text("检测到本地与云端的数据库不一致。请选择保留哪个版本？\n\n注意：这会永久覆盖另一端的数据。"),
