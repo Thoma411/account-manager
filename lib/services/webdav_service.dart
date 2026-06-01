@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-04-13 18:19:04
- * @LastEditTime: 2026-05-17 23:35:00
+ * @LastEditTime: 2026-06-01 18:24:29
  * @Description: webdav
  */
 
@@ -12,7 +12,6 @@ import 'package:http/http.dart' as http;
 import 'package:webdav_client/webdav_client.dart' as dav;
 
 import 'settings_service.dart';
-import 'storage_service.dart';
 
 class WebDavService {
   static final WebDavService _instance = WebDavService._internal();
@@ -83,22 +82,38 @@ class WebDavService {
   }
 
   // 本地云端版本比较
-  Future<SyncDecision> compareVersions({int t = 15000}) async {
+  Future<SyncDecision> compareVersions() async {
     try {
-      final localPath = await StorageService().getDatabasePath();
-      final localFile = File(localPath);
-      if (!await localFile.exists()) return SyncDecision.error;
+      final s = SettingsService();
+      // 获取本地逻辑状态
+      int localRev = int.parse(s.get('local_revision', defaultValue: '0')!);
+      int lastSyncedRev = int.parse(
+        s.get('last_synced_revision', defaultValue: '0')!,
+      );
+      String lastSyncedETag = s.get('last_synced_etag', defaultValue: '')!;
 
-      final localMTime = (await localFile.stat()).modified;
+      // 获取云端最新状态
       final remoteFile = await getRemoteVaultInfo();
-
       if (remoteFile == null) return SyncDecision.noRemote;
+      String currentRemoteETag = remoteFile.eTag?.replaceAll('"', '') ?? "";
 
-      // 为了防止毫秒级的微小差异, 可忽略t(ms)内的偏差
-      final diff = localMTime.difference(remoteFile.mTime!).inMilliseconds;
-      if (diff > t) return SyncDecision.localNewer;
-      if (diff < -t) return SyncDecision.remoteNewer;
-      return SyncDecision.bothSynced;
+      // 逻辑判定
+      bool localChanged = localRev > lastSyncedRev;
+      bool remoteChanged =
+          (currentRemoteETag != lastSyncedETag && lastSyncedETag.isNotEmpty);
+
+      debugPrint("Local: Rev($localRev), LastSyncedRev($lastSyncedRev)");
+      debugPrint(
+        "Remote: CurrentETag($currentRemoteETag), LastSyncedETag($lastSyncedETag)",
+      );
+      // 两端均无改动
+      if (!localChanged && !remoteChanged) return SyncDecision.bothSynced;
+      // 仅本地改动
+      if (localChanged && !remoteChanged) return SyncDecision.localNewer;
+      // 仅云端改动（其他设备同步）
+      if (!localChanged && remoteChanged) return SyncDecision.remoteNewer;
+      // 两端均有改动（冲突）
+      return SyncDecision.remoteNewer; // 此处建议返回 remoteNewer 触发 UI 冲突对话框
     } catch (e) {
       return SyncDecision.error;
     }
@@ -106,23 +121,25 @@ class WebDavService {
 
   // 3.核心传输接口(HTTP 协议层)
   // 上传至云端
-  Future<void> uploadVault(String localPath) async {
+  Future<String> uploadVault(String localPath) async {
     if (!_ensureClient()) throw Exception("客户端未就绪");
     // 预建目录
     try {
       await _client!.mkdir('/vault_keeper');
     } catch (_) {}
-    return _doHttpRequest(method: 'PUT', localPath: localPath);
+    final res = await _doHttpRequest(method: 'PUT', localPath: localPath);
+    return res.headers['etag']?.replaceAll('"', '') ?? "";
   }
 
   // 下载至本地
-  Future<void> downloadVault(String localPath) async {
+  Future<String> downloadVault(String localPath) async {
     if (!_ensureClient()) throw Exception("客户端未就绪");
-    return _doHttpRequest(method: 'GET', localPath: localPath);
+    final res = await _doHttpRequest(method: 'GET', localPath: localPath);
+    return res.headers['etag']?.replaceAll('"', '') ?? "";
   }
 
   // 统一处理 HTTP PUT/GET 逻辑
-  Future<void> _doHttpRequest({
+  Future<http.Response> _doHttpRequest({
     required String method,
     required String localPath,
   }) async {
@@ -144,6 +161,7 @@ class WebDavService {
       if (res.statusCode < 200 || res.statusCode >= 300) {
         throw Exception("上传失败: ${res.statusCode}");
       }
+      return res;
     } else {
       final res = await http.get(targetUri, headers: {'Authorization': auth});
       if (res.statusCode == 200) {
@@ -151,6 +169,7 @@ class WebDavService {
       } else {
         throw Exception("下载失败: ${res.statusCode}");
       }
+      return res;
     }
   }
 }

@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-05-17 23:19:27
+ * @LastEditTime: 2026-06-01 18:11:52
  * @Description: 主框架
  */
 
@@ -602,6 +602,8 @@ class _SyncPageState extends State<SyncPage> {
   DateTime? _localTime, _remoteTime;
   int? _localSize, _remoteSize;
 
+  SyncDecision? _currentDecision; // 当前同步决策结果
+
   // 模拟/持久化日志列表
   List<Map<String, dynamic>> _logs = [];
 
@@ -640,7 +642,7 @@ class _SyncPageState extends State<SyncPage> {
   Future<void> _refreshStatus() async {
     setState(() => _isLoading = true);
     try {
-      // 1. 获取本地信息
+      // 获取本地信息
       final localPath = await _storage.getDatabasePath();
       final localFile = File(localPath);
       if (await localFile.exists()) {
@@ -648,14 +650,16 @@ class _SyncPageState extends State<SyncPage> {
         _localTime = stat.modified;
         _localSize = stat.size;
       }
-
-      // 2. 获取远程信息
+      // 获取远程信息
       final remoteFile = await _webdav.getRemoteVaultInfo();
       if (remoteFile != null) {
         _remoteTime = remoteFile.mTime;
         _remoteSize = remoteFile.size;
       }
+      // 同步决策结果
+      _currentDecision = await _webdav.compareVersions();
     } catch (e) {
+      _currentDecision = SyncDecision.error;
       debugPrint("刷新状态失败: $e");
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -671,6 +675,15 @@ class _SyncPageState extends State<SyncPage> {
     setState(() => _isLoading = false);
   }
 
+  // 更新锚点的公共方法
+  Future<void> _updateSyncMarkers(String etag) async {
+    int currentLocalRev = int.parse(
+      _settings.get('local_revision', defaultValue: '0')!,
+    );
+    await _settings.set('last_synced_revision', currentLocalRev.toString());
+    await _settings.set('last_synced_etag', etag);
+  }
+
   // 处理智能同步逻辑
   Future<void> _handleSmartSync() async {
     if (_isLoading) return;
@@ -683,7 +696,8 @@ class _SyncPageState extends State<SyncPage> {
     try {
       if (decision == SyncDecision.localNewer ||
           decision == SyncDecision.noRemote) {
-        await _webdav.uploadVault(localPath);
+        String etag = await _webdav.uploadVault(localPath); // 获取新ETag
+        await _updateSyncMarkers(etag); // 打锚点
         _addLog("智能同步", "完成：本地库已备份至云端");
       } else if (decision == SyncDecision.remoteNewer) {
         _addLog("智能同步", "中断：云端版本较新，需手动决策");
@@ -709,14 +723,16 @@ class _SyncPageState extends State<SyncPage> {
   Future<void> _handleForceAction(bool isUpload) async {
     final path = await _storage.getDatabasePath();
     try {
+      String newEtag;
       if (isUpload) {
-        await _webdav.uploadVault(path);
+        newEtag = await _webdav.uploadVault(path); // 获取新ETag
         _addLog("强制操作", "已覆盖云端备份");
       } else {
         await _storage.closeDatabase(); // 覆盖前关闭本地连接
-        await _webdav.downloadVault(path);
+        newEtag = await _webdav.downloadVault(path); // 获取新ETag
         _addLog("强制操作", "已从云端覆盖本地，请手动刷新列表");
       }
+      await _updateSyncMarkers(newEtag); // 同步成功后打下锚点
       _refreshStatus();
     } catch (e) {
       _addLog("强制操作", "失败: $e");
@@ -886,13 +902,21 @@ class _SyncPageState extends State<SyncPage> {
 
   // 获取智能同步文字
   String _getSmartSyncLabel() {
-    if (_localTime == null || _remoteTime == null) {
-      return "一键同步";
+    if (_isLoading) return "检测中...";
+
+    switch (_currentDecision) {
+      case SyncDecision.bothSynced:
+        return "已是最新版本";
+      case SyncDecision.localNewer:
+      case SyncDecision.noRemote:
+        return "上传本地更新";
+      case SyncDecision.remoteNewer:
+        return "拉取云端更新";
+      case SyncDecision.error:
+        return "检测失败，点击刷新";
+      default:
+        return "一键同步";
     }
-    if (_localTime!.isAtSameMomentAs(_remoteTime!)) {
-      return "已是最新版本";
-    }
-    return _localTime!.isAfter(_remoteTime!) ? "上传本地更新" : "拉取云端更新";
   }
 
   // 构建日志列表

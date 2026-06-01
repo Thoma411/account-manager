@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-05-02 23:07:26
+ * @LastEditTime: 2026-06-01 00:39:33
  * @Description: 与SQLite交互的方法
  */
 
@@ -11,6 +11,7 @@ import 'package:path/path.dart';
 import 'dart:io';
 
 import '../models/account.dart';
+import 'settings_service.dart';
 
 class StorageService {
   static final StorageService _instance = StorageService._internal();
@@ -93,6 +94,15 @@ class StorageService {
     );
   }
 
+  Future<void> _incrementRevision() async {
+    final s = SettingsService();
+    // 读取当前版本号 默认为'0'
+    int currentRev = int.parse(s.get('local_revision', defaultValue: '0')!);
+    // 版本号+1并保存
+    await s.set('local_revision', (currentRev + 1).toString());
+    debugPrint("logicalVersion upd: ${currentRev + 1}");
+  }
+
   // 插入数据
   Future<void> insertAccount(Account account) async {
     final db = await database;
@@ -101,6 +111,7 @@ class StorageService {
       account.toMap(),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+    await _incrementRevision();
   }
 
   // 删除数据
@@ -111,6 +122,7 @@ class StorageService {
       where: 'id = ?', // 根据唯一 ID 删除
       whereArgs: [id],
     );
+    await _incrementRevision();
   }
 
   // 获取所有数据
