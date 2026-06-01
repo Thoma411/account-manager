@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-04-13 18:19:04
- * @LastEditTime: 2026-06-01 18:24:29
+ * @LastEditTime: 2026-06-01 22:48:41
  * @Description: webdav
  */
 
@@ -86,11 +86,16 @@ class WebDavService {
     try {
       final s = SettingsService();
       // 获取本地逻辑状态
-      int localRev = int.parse(s.get('local_revision', defaultValue: '0')!);
+      int localRev = int.parse(
+        s.get('local_revision', defaultValue: '0')!,
+      ); // 本地逻辑版本号
       int lastSyncedRev = int.parse(
         s.get('last_synced_revision', defaultValue: '0')!,
-      );
-      String lastSyncedETag = s.get('last_synced_etag', defaultValue: '')!;
+      ); // 上次同步版本号
+      String lastSyncedETag = s.get(
+        'last_synced_etag',
+        defaultValue: '',
+      )!; // 云端锚点
 
       // 获取云端最新状态
       final remoteFile = await getRemoteVaultInfo();
