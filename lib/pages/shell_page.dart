@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-01 18:11:52
+ * @LastEditTime: 2026-06-01 22:36:57
  * @Description: 主框架
  */
 
@@ -28,14 +28,21 @@ class ShellPage extends StatefulWidget {
 class _ShellPageState extends State<ShellPage> {
   int _selectedIndex = 0;
 
+  final GlobalKey<SyncPageState> _syncPageKey = GlobalKey<SyncPageState>();
+  late List<Widget> _pages;
+
   // 页面列表
-  final List<Widget> _pages = [
-    const AccountListPage(),
-    const SyncPage(),
-    const MigrationPage(),
-    const Center(child: Text("回收站 (开发中)")),
-    const SettingsPage(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      const AccountListPage(),
+      SyncPage(key: _syncPageKey),
+      const MigrationPage(),
+      const Center(child: Text("回收站 (开发中)")),
+      const SettingsPage(),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -116,6 +123,10 @@ class _ShellPageState extends State<ShellPage> {
       return;
     }
     setState(() => _selectedIndex = index);
+
+    if (index == 1) {
+      _syncPageKey.currentState?.refreshStatus(); // 刷新云同步界面
+    }
   }
 
   // 弹出新增账户对话框
@@ -589,11 +600,11 @@ class SyncPage extends StatefulWidget {
   const SyncPage({super.key});
 
   @override
-  State<SyncPage> createState() => _SyncPageState();
+  State<SyncPage> createState() => SyncPageState();
 }
 
 // 云同步界面
-class _SyncPageState extends State<SyncPage> {
+class SyncPageState extends State<SyncPage> {
   final _webdav = WebDavService();
   final _storage = StorageService();
   final _settings = SettingsService();
@@ -611,7 +622,7 @@ class _SyncPageState extends State<SyncPage> {
   void initState() {
     super.initState();
     _loadSyncLogs();
-    _refreshStatus();
+    refreshStatus();
   }
 
   // 从设置加载历史日志
@@ -639,7 +650,7 @@ class _SyncPageState extends State<SyncPage> {
     _settings.set('sync_history_json', jsonEncode(_logs));
   }
 
-  Future<void> _refreshStatus() async {
+  Future<void> refreshStatus() async {
     setState(() => _isLoading = true);
     try {
       // 获取本地信息
@@ -715,7 +726,7 @@ class _SyncPageState extends State<SyncPage> {
       _addLog("智能同步", "失败: $e");
     } finally {
       setState(() => _isLoading = false);
-      _refreshStatus();
+      refreshStatus();
     }
   }
 
@@ -733,7 +744,7 @@ class _SyncPageState extends State<SyncPage> {
         _addLog("强制操作", "已从云端覆盖本地，请手动刷新列表");
       }
       await _updateSyncMarkers(newEtag); // 同步成功后打下锚点
-      _refreshStatus();
+      refreshStatus();
     } catch (e) {
       _addLog("强制操作", "失败: $e");
     }
