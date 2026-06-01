@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-01 22:36:57
+ * @LastEditTime: 2026-06-02 00:14:26
  * @Description: 主框架
  */
 
@@ -29,6 +29,8 @@ class _ShellPageState extends State<ShellPage> {
   int _selectedIndex = 0;
 
   final GlobalKey<SyncPageState> _syncPageKey = GlobalKey<SyncPageState>();
+  final GlobalKey<SettingsPageState> _settingsPageKey =
+      GlobalKey<SettingsPageState>();
   late List<Widget> _pages;
 
   // 页面列表
@@ -40,7 +42,7 @@ class _ShellPageState extends State<ShellPage> {
       SyncPage(key: _syncPageKey),
       const MigrationPage(),
       const Center(child: Text("回收站 (开发中)")),
-      const SettingsPage(),
+      SettingsPage(key: _settingsPageKey),
     ];
   }
 
@@ -116,14 +118,15 @@ class _ShellPageState extends State<ShellPage> {
       _showGuardDialog("访问受限", "请先在主页创建新数据库");
       return;
     }
-
     // 情况2: 未配WebDAV 进入云同步页
     if (!hasWebDav && index == 1) {
       _showGuardDialog("访问受限", "请先在设置中配置并连接 WebDAV 云盘");
       return;
     }
     setState(() => _selectedIndex = index);
-
+    if (index == 4) {
+      _settingsPageKey.currentState?.checkDbStatus(); // 刷新设置界面配置webdav选项
+    }
     if (index == 1) {
       _syncPageKey.currentState?.refreshStatus(); // 刷新云同步界面
     }
@@ -314,11 +317,11 @@ class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
   @override
-  State<SettingsPage> createState() => _SettingsPageState();
+  State<SettingsPage> createState() => SettingsPageState();
 }
 
 // 设置界面
-class _SettingsPageState extends State<SettingsPage> {
+class SettingsPageState extends State<SettingsPage> {
   final _settings = SettingsService();
   bool _isDarkMode = false; // 深色模式
   bool _hasDb = false; // 控制WebDAV按钮
@@ -328,7 +331,7 @@ class _SettingsPageState extends State<SettingsPage> {
     super.initState();
     // 从已经loadSettings加载好的缓存中获取值
     _isDarkMode = _settings.get('dark_mode') == 'true';
-    _checkDbStatus();
+    checkDbStatus();
   }
 
   void _toggleDarkMode(bool value) async {
@@ -338,20 +341,20 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   // 检查数据库状态 决定是否允许配置WebDAV
-  void _checkDbStatus() async {
+  void checkDbStatus() async {
     bool exists = await StorageService().isDatabaseExists();
+    if (!mounted) return;
     setState(() {
       _hasDb = exists;
     });
   }
-  // TODO: 建库后应立即刷新状态, 使能够立刻配置webdav
 
   // 在用户确认连接及冲突处理后正式将WebDAV凭据持久化到加密数据库中
   Future<void> _finalizeWebDavSave(String url, String user, String pwd) async {
     await _settings.set('webdav_url', url);
     await _settings.set('webdav_user', user);
     await _settings.set('webdav_pwd', pwd, isEncrypted: true);
-    _checkDbStatus(); // 刷新本页的 hasDb 状态，解除按钮禁用
+    checkDbStatus(); // 刷新本页的 hasDb 状态，解除按钮禁用
   }
 
   // 在云端完全没有备份时引导用户进行首次上传
