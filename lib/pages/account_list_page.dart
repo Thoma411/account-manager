@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-04-14 21:31:11
+ * @LastEditTime: 2026-06-01 23:42:52
  * @Description: 账户信息页(查看页)
  */
 
@@ -15,7 +15,8 @@ import '../models/account.dart'; // 导入模型
 import '../services/storage_service.dart'; // 导入存储服务
 import '../services/security_service.dart'; // 导入安全服务
 import '../services/webdav_service.dart';
-import '../utils/utils.dart'; // 导入工具箱
+import '../pages/login_page.dart';
+import '../utils/utils.dart';
 
 class AccountListPage extends StatefulWidget {
   const AccountListPage({super.key});
@@ -663,23 +664,21 @@ class _AccountListPageState extends State<AccountListPage> {
                 } catch (e) {
                   throw Exception("无法访问云端目录/vault_keeper，请确认目录已手动创建或执行过备份。");
                 }
-                // 3. 检查文件是否存在
+                // 检查文件是否存在
                 bool fileExists = files.any((f) => f.name == 'vault_keeper.db');
-                if (!fileExists) {
-                  throw Exception("云端目录中未找到vault_keeper.db");
-                }
-                // bool isOk = await webdav.ping();
-                // if (!isOk) throw Exception("连接失败，请检查配置或网络");
-                // 获取本地存放路径
-                final localPath = await StorageService().getDatabasePath();
+                if (!fileExists) throw Exception("云端目录中未找到vault_keeper.db");
+                final localPath = await StorageService()
+                    .getDatabasePath(); // 获取本地存放路径
                 await webdav.downloadVault(localPath); // 下载
                 if (!context.mounted) return;
                 Navigator.pop(context); // 关闭配置弹窗
                 // 下载成功后，由于本地有了.db，自动引导至解锁流程
-                MessageUtil.show(context, "备份已下载，请使用原主密码解锁");
-                // TODO: 触发一次状态检查，让 UI 变成"老用户解锁"状态
-                // 或者简单点，直接重启应用/重新加载 main
-                await _checkDbStatus();
+                MessageUtil.show(context, "备份已下载，重新解锁以载入数据");
+                // 强制跳转到解锁界面，并清空之前的路由栈（防止用户通过返回键回到未解密的界面）
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => const UnlockPage()),
+                  (route) => false, // 这会销毁当前的ShellPage
+                );
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(
