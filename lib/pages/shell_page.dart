@@ -1,12 +1,13 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-02 00:14:26
+ * @LastEditTime: 2026-06-02 22:14:56
  * @Description: 主框架
  */
 
 import 'dart:io';
 import 'dart:convert';
+import 'package:accountmanager/pages/login_page.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
@@ -357,38 +358,6 @@ class SettingsPageState extends State<SettingsPage> {
     checkDbStatus(); // 刷新本页的 hasDb 状态，解除按钮禁用
   }
 
-  // 在云端完全没有备份时引导用户进行首次上传
-  void _showInitialUploadPrompt(String url, String user, String pwd) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("连接成功"),
-        content: const Text("配置已保存。云端目前没有备份，是否立即将当前本地数据库上传到云端？"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("暂不"),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                await _finalizeWebDavSave(url, user, pwd);
-                final path = await StorageService().getDatabasePath();
-                await WebDavService().uploadVault(path);
-                if (!context.mounted) return;
-                Navigator.pop(context);
-                MessageUtil.show(context, "首次备份完成！");
-              } catch (e) {
-                MessageUtil.show(context, "备份失败: $e");
-              }
-            },
-            child: const Text("立即备份"),
-          ),
-        ],
-      ),
-    );
-  }
-
   // 弹出 WebDAV 配置对话框
   void _showWebDavDialog() {
     final urlController = TextEditingController(
@@ -453,57 +422,18 @@ class SettingsPageState extends State<SettingsPage> {
               bool isOk = await webdav.ping();
               if (!isOk) {
                 if (!context.mounted) return;
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text("连接失败，请检查配置")));
+                MessageUtil.show(context, "连接失败，请检查配置");
                 return;
               }
-              // 3. 探测云端是否有库
-              final remoteInfo = await webdav.getRemoteVaultInfo();
+              // 验证通过直接保存凭据，冲突处理在云同步界面执行
+              await _finalizeWebDavSave(
+                urlController.text,
+                userController.text,
+                pwdController.text,
+              );
               if (!context.mounted) return;
-              Navigator.pop(context); // 关闭配置对话框
-
-              if (remoteInfo != null) {
-                // 云端已有库，引导冲突处理
-                _showConflictDialog(
-                  context: context,
-                  onConfirmLocal: () async {
-                    await _finalizeWebDavSave(
-                      urlController.text,
-                      userController.text,
-                      pwdController.text,
-                    );
-                    await WebDavService().uploadVault(
-                      await StorageService().getDatabasePath(),
-                    );
-                    if (context.mounted) {
-                      MessageUtil.show(context, "配置已保存，云端已覆盖");
-                    }
-                  },
-                  onConfirmRemote: () async {
-                    await _finalizeWebDavSave(
-                      urlController.text,
-                      userController.text,
-                      pwdController.text,
-                    );
-                    await StorageService().closeDatabase();
-                    await WebDavService().downloadVault(
-                      await StorageService().getDatabasePath(),
-                    );
-                    if (context.mounted) {
-                      MessageUtil.show(context, "配置已保存，数据已同步，请重启应用");
-                    }
-                  },
-                );
-              } else {
-                // 云端无库，引导首次备份
-                // 注意：此处 text 内容已按要求保持，但作为参数传递
-                _showInitialUploadPrompt(
-                  urlController.text,
-                  userController.text,
-                  pwdController.text,
-                );
-              }
+              Navigator.pop(context); // 关闭输入框
+              MessageUtil.show(context, "WebDAV 配置已保存，请前往云同步界面管理数据");
             },
             child: const Text("保存配置"),
           ),
@@ -698,58 +628,65 @@ class SyncPageState extends State<SyncPage> {
     await _settings.set('last_synced_etag', etag);
   }
 
+  // 冲突处理对话框
+  void _showConflictDialog({
+    required VoidCallback onConfirmLocal, // 本地覆盖云端
+    required VoidCallback onConfirmRemote, // 云端覆盖本地
+  }) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text("同步版本冲突"),
+        content: const Text(
+          "检测到本地与云端的数据库不一致。请选择保留哪个版本？\n\n注意：保留云端将强制重启应用以重新载入数据，这会永久覆盖另一端的数据。",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("取消"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              onConfirmLocal();
+            },
+            child: const Text("保留本地 (上传)", style: TextStyle(color: Colors.red)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              onConfirmRemote();
+            },
+            child: const Text("保留云端 (下载)"),
+          ),
+        ],
+      ),
+    );
+  }
+
   // 处理智能同步逻辑
   Future<void> _handleSmartSync() async {
     if (_isLoading) return;
-    setState(() => _isLoading = true);
-    _addLog("智能同步", "正在对比版本...");
+    _addLog("智能同步", "正在对比...");
 
     final decision = await _webdav.compareVersions();
-    final localPath = await _storage.getDatabasePath();
-
-    try {
-      if (decision == SyncDecision.localNewer ||
-          decision == SyncDecision.noRemote) {
-        String etag = await _webdav.uploadVault(localPath); // 获取新ETag
-        await _updateSyncMarkers(etag); // 打锚点
-        _addLog("智能同步", "完成：本地库已备份至云端");
-      } else if (decision == SyncDecision.remoteNewer) {
-        _addLog("智能同步", "中断：云端版本较新，需手动决策");
-        // 调用末尾的顶层冲突对话框
-        if (!mounted) return;
+    switch (decision) {
+      case SyncDecision.localNewer:
+      case SyncDecision.noRemote:
+        await _executeSync(true); // 直接调用执行器上传
+        break;
+      case SyncDecision.remoteNewer:
         _showConflictDialog(
-          context: context,
-          onConfirmLocal: () => _handleForceAction(true),
-          onConfirmRemote: () => _handleForceAction(false),
+          onConfirmLocal: () => _executeSync(true),
+          onConfirmRemote: () => _executeSync(false),
         );
-      } else if (decision == SyncDecision.bothSynced) {
-        _addLog("智能同步", "无需操作：两端已同步");
-      }
-    } catch (e) {
-      _addLog("智能同步", "失败: $e");
-    } finally {
-      setState(() => _isLoading = false);
-      refreshStatus();
-    }
-  }
-
-  // 处理强制上传/下载
-  Future<void> _handleForceAction(bool isUpload) async {
-    final path = await _storage.getDatabasePath();
-    try {
-      String newEtag;
-      if (isUpload) {
-        newEtag = await _webdav.uploadVault(path); // 获取新ETag
-        _addLog("强制操作", "已覆盖云端备份");
-      } else {
-        await _storage.closeDatabase(); // 覆盖前关闭本地连接
-        newEtag = await _webdav.downloadVault(path); // 获取新ETag
-        _addLog("强制操作", "已从云端覆盖本地，请手动刷新列表");
-      }
-      await _updateSyncMarkers(newEtag); // 同步成功后打下锚点
-      refreshStatus();
-    } catch (e) {
-      _addLog("强制操作", "失败: $e");
+        break;
+      case SyncDecision.bothSynced:
+        _addLog("智能同步", "无需操作：已是最新");
+        break;
+      default:
+        _addLog("智能同步", "异常：无法获取状态");
     }
   }
 
@@ -826,7 +763,7 @@ class SyncPageState extends State<SyncPage> {
                             child: _buildActionButton(
                               label: "强制上传",
                               icon: Icons.upload,
-                              onPressed: () => _handleForceAction(true),
+                              onPressed: () => _executeSync(true),
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -834,7 +771,7 @@ class SyncPageState extends State<SyncPage> {
                             child: _buildActionButton(
                               label: "强制下载",
                               icon: Icons.download,
-                              onPressed: () => _handleForceAction(false),
+                              onPressed: () => _executeSync(false),
                             ),
                           ),
                         ],
@@ -888,6 +825,42 @@ class SyncPageState extends State<SyncPage> {
         ],
       ),
     );
+  }
+
+  // 处理具体的物理同步动作
+  Future<void> _executeSync(bool isUpload) async {
+    final path = await _storage.getDatabasePath();
+    final actionName = isUpload ? "上传" : "下载";
+
+    try {
+      setState(() => _isLoading = true);
+      _addLog(actionName, "执行中...");
+
+      if (isUpload) {
+        String newEtag = await _webdav.uploadVault(path);
+        await _updateSyncMarkers(newEtag);
+        _addLog(actionName, "成功：云端已更新");
+      } else {
+        await _storage.closeDatabase();
+        await _webdav.downloadVault(path);
+        _addLog(actionName, "成功：本地已拉取");
+
+        if (!mounted) return;
+        // 下载后的强制重定向
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const UnlockPage()),
+          (route) => false,
+        );
+        return; // 终止后续代码
+      }
+    } catch (e) {
+      _addLog(actionName, "失败: $e");
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        refreshStatus(); // 无论成败刷新状态
+      }
+    }
   }
 
   // 构建按钮
@@ -1032,39 +1005,4 @@ class TrashPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Center(child: Text("回收站"));
   }
-}
-
-void _showConflictDialog({
-  required BuildContext context,
-  required VoidCallback onConfirmLocal, // 本地覆盖云端
-  required VoidCallback onConfirmRemote, // 云端覆盖本地
-}) {
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => AlertDialog(
-      title: const Text("同步版本冲突"),
-      content: const Text("检测到本地与云端的数据库不一致。请选择保留哪个版本？\n\n注意：这会永久覆盖另一端的数据。"),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text("取消"),
-        ),
-        TextButton(
-          onPressed: () {
-            Navigator.pop(context);
-            onConfirmLocal();
-          },
-          child: const Text("保留本地 (上传)", style: TextStyle(color: Colors.red)),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            Navigator.pop(context);
-            onConfirmRemote();
-          },
-          child: const Text("保留云端 (下载)"),
-        ),
-      ],
-    ),
-  );
 }
