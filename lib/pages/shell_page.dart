@@ -1,13 +1,14 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-03 20:11:02
+ * @LastEditTime: 2026-06-03 21:26:40
  * @Description: 主框架
  */
 
 import 'dart:io';
 import 'dart:convert';
 import 'package:accountmanager/pages/login_page.dart';
+import 'package:accountmanager/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
@@ -506,6 +507,103 @@ class SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  // 弹出修改主密码MP对话框
+  void _showChangePasswordDialog() {
+    final oldPwController = TextEditingController();
+    final newPwController = TextEditingController();
+    final confirmPwController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("修改主密码"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              "修改主密码后将强制退出，请使用新主密码重新登录。",
+              style: TextStyle(fontSize: 12, color: Colors.redAccent),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: oldPwController,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: "当前主密码"),
+            ),
+            const Divider(height: 32),
+            TextField(
+              controller: newPwController,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: "新主密码 (至少6位)"),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: confirmPwController,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: "确认新主密码"),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("取消"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              String newPw = newPwController.text;
+              if (newPw != confirmPwController.text || newPw.length < 6) {
+                MessageUtil.show(context, "密码不一致或长度不足6位");
+                return;
+              }
+              final auth = AuthService();
+              final sec = SecurityService();
+              final storage = StorageService();
+              // 验证旧主密码
+              bool isOldValid = await auth.verifyPassword(oldPwController.text);
+              if (!isOldValid) {
+                if (!context.mounted) return;
+                MessageUtil.show(context, "当前主密码错误，验证失败");
+                return;
+              }
+              final dk = sec.currentDataKey;
+              if (dk == null) {
+                if (!context.mounted) return;
+                MessageUtil.show(context, "错误：加密环境未就绪");
+                return;
+              }
+              try {
+                // 1. 生成新盐值并派生新MK
+                final newSalt = sec.generateRandomBytes(32);
+                final newMk = sec.deriveMasterKey(newPw, newSalt);
+                // 2. 用新MK重新包装现有的DK(dk.bytes是原始32字节)
+                final dkBase64 = base64.encode(dk.bytes);
+                final newEdkM = sec.encrypt(dkBase64, newMk);
+                // 3. 持久化更新
+                await storage.saveMetadata(
+                  'master_salt',
+                  base64.encode(newSalt),
+                );
+                await storage.saveMetadata('edk_m', newEdkM);
+                if (!context.mounted) return;
+                Navigator.pop(context); // 关闭对话框
+                MessageUtil.show(context, "主密码修改成功，请重新登录");
+                sec.clearKeys(); // 清理内存密钥
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => const UnlockPage()),
+                  (route) => false,
+                ); // 强制退回登入界面
+              } catch (e) {
+                if (!context.mounted) return;
+                MessageUtil.show(context, "修改失败：$e");
+              }
+            },
+            child: const Text("确认修改并重新登录"),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListView(
@@ -543,6 +641,14 @@ class SettingsPageState extends State<SettingsPage> {
           leading: const Icon(Icons.key_outlined),
           enabled: _hasDb, // 仅在有库时可用
           onTap: _showViewRKDialog,
+        ),
+        const Divider(),
+        ListTile(
+          title: const Text("修改主密码"),
+          subtitle: const Text("更换登入应用时使用的密码"),
+          leading: const Icon(Icons.password_outlined),
+          enabled: _hasDb,
+          onTap: _showChangePasswordDialog,
         ),
         const Divider(),
         const ListTile(
