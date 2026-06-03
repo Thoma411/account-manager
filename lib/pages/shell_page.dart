@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-03 17:24:21
+ * @LastEditTime: 2026-06-03 20:11:02
  * @Description: 主框架
  */
 
@@ -9,11 +9,13 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:accountmanager/pages/login_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
 import 'account_list_page.dart';
 import '../models/account.dart';
 import '../services/storage_service.dart';
+import '../services/security_service.dart';
 import '../services/settings_service.dart';
 import '../services/webdav_service.dart';
 import '../services/csv_service.dart';
@@ -358,7 +360,7 @@ class SettingsPageState extends State<SettingsPage> {
     checkDbStatus(); // 刷新本页的 hasDb 状态，解除按钮禁用
   }
 
-  // 弹出 WebDAV 配置对话框
+  // 弹出WebDAV配置对话框
   void _showWebDavDialog() {
     final urlController = TextEditingController(
       text: _settings.get('webdav_url'),
@@ -442,6 +444,68 @@ class SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  // 弹出展示RK对话框
+  void _showViewRKDialog() async {
+    final sec = SecurityService();
+    final storage = StorageService();
+    // 获取解密钥匙(内存中的DK)
+    final dk = sec.currentDataKey;
+    if (dk == null) {
+      MessageUtil.show(context, "错误：加密环境未就绪");
+      return;
+    }
+    // 从数据库读取加密的恢复密钥(erk)
+    String? erk = await storage.getMetadata('erk');
+    if (erk == null) {
+      if (!mounted) return;
+      MessageUtil.show(context, "未找到恢复密钥记录");
+      return;
+    }
+    try {
+      final String rk = sec.decrypt(erk, dk); // 执行解密
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text("您的恢复密钥 (RK)"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "这是您找回数据的唯一凭证，请勿泄露给他人。",
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              const SizedBox(height: 20),
+              SelectableText(
+                rk,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("关闭"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: rk));
+                MessageUtil.show(context, "密钥已复制到剪切板");
+              },
+              child: const Text("复制"),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (mounted) MessageUtil.show(context, "解密失败：$e");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListView(
@@ -471,6 +535,14 @@ class SettingsPageState extends State<SettingsPage> {
           leading: const Icon(Icons.cloud_queue),
           enabled: _hasDb,
           onTap: _hasDb ? _showWebDavDialog : null,
+        ),
+        const Divider(),
+        ListTile(
+          title: const Text("查看恢复密钥"),
+          subtitle: const Text("主密码遗失时，凭此密钥可重置密码并找回数据"),
+          leading: const Icon(Icons.key_outlined),
+          enabled: _hasDb, // 仅在有库时可用
+          onTap: _showViewRKDialog,
         ),
         const Divider(),
         const ListTile(
