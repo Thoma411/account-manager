@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-01 23:42:52
+ * @LastEditTime: 2026-06-03 19:56:05
  * @Description: 账户信息页(查看页)
  */
 
@@ -711,7 +711,7 @@ class _AccountListPageState extends State<AccountListPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("如果您忘记了主密码，这是找回数据的唯一方法。请务必将其复制并妥善保存。"),
+            const Text("如果您忘记了主密码，这是找回数据的唯一方法，请务必妥善保存。"),
             const SizedBox(height: 20),
             SelectableText(
               rk,
@@ -727,6 +727,8 @@ class _AccountListPageState extends State<AccountListPage> {
         actions: [
           ElevatedButton(
             onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: rk));
+              if (!context.mounted) return;
               Navigator.pop(context);
               // 成功后刷新状态
               await _checkDbStatus();
@@ -734,10 +736,10 @@ class _AccountListPageState extends State<AccountListPage> {
               if (context.mounted) {
                 ScaffoldMessenger.of(
                   context,
-                ).showSnackBar(const SnackBar(content: Text("保险箱已就绪")));
+                ).showSnackBar(const SnackBar(content: Text("恢复密钥已复制至剪切板，保险箱已就绪")));
               }
             },
-            child: const Text("我已保存恢复密钥"),
+            child: const Text("复制恢复密钥"),
           ),
         ],
       ),
