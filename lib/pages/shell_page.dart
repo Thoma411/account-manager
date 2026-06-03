@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-02 22:14:56
+ * @LastEditTime: 2026-06-03 17:24:21
  * @Description: 主框架
  */
 
@@ -614,17 +614,39 @@ class SyncPageState extends State<SyncPage> {
   Future<void> _handlePing() async {
     setState(() => _isLoading = true);
     _addLog("连接测试", "正在连接...");
-    bool ok = await _webdav.ping();
-    _addLog("连接测试", ok ? "成功" : "失败，请检查配置");
-    setState(() => _isLoading = false);
+    try {
+      bool ok = await _webdav.ping();
+      if (ok) {
+        // 获取云端指纹
+        final remoteInfo = await _webdav.getRemoteVaultInfo();
+        if (remoteInfo != null) {
+          String remoteETag = remoteInfo.eTag?.replaceAll('"', '') ?? "";
+          // 如果本地指纹是空的，说明是新设备或刚迁移，自动补全它
+          if (_settings.get('last_synced_etag', defaultValue: '')!.isEmpty) {
+            await _settings.set('last_synced_etag', remoteETag);
+          }
+          _addLog("连接测试", "成功 (云端版本: ${remoteETag.substring(0, 5)}...)");
+        } else {
+          _addLog("连接测试", "成功 (云端暂无备份)");
+        }
+      } else {
+        _addLog("连接测试", "失败：请检查地址或应用密码");
+      }
+    } catch (e) {
+      _addLog("连接测试", "异常: $e");
+    } finally {
+      setState(() => _isLoading = false);
+      refreshStatus(); // 刷新 UI 状态
+    }
   }
 
   // 更新锚点的公共方法
   Future<void> _updateSyncMarkers(String etag) async {
-    int currentLocalRev = int.parse(
-      _settings.get('local_revision', defaultValue: '0')!,
-    );
-    await _settings.set('last_synced_revision', currentLocalRev.toString());
+    String? currentLocalRev = _settings.get(
+      'local_revision',
+      defaultValue: '0',
+    ); // 存入SharedPrefs
+    await _settings.set('last_synced_revision', currentLocalRev!);
     await _settings.set('last_synced_etag', etag);
   }
 
@@ -842,7 +864,8 @@ class SyncPageState extends State<SyncPage> {
         _addLog(actionName, "成功：云端已更新");
       } else {
         await _storage.closeDatabase();
-        await _webdav.downloadVault(path);
+        String newEtag = await _webdav.downloadVault(path);
+        await _settings.set('last_synced_etag', newEtag);
         _addLog(actionName, "成功：本地已拉取");
 
         if (!mounted) return;

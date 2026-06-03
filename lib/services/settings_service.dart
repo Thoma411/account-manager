@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-04-08 17:43:09
- * @LastEditTime: 2026-04-13 17:09:21
+ * @LastEditTime: 2026-06-03 16:30:02
  * @Description: 设置
  */
 
@@ -20,7 +20,14 @@ class SettingsService {
   final Map<String, String> _dbCache = {}; // 内存缓存数据库项
 
   // 定义哪些 Key 属于本地配置（不进数据库）
-  final Set<String> _localKeys = {'dark_mode', 'language', 'window_size'};
+  final Set<String> _localKeys = {
+    'dark_mode',
+    'language',
+    'window_size',
+    // 同步状态
+    'last_synced_revision', // 上传下载时的本地逻辑版本快照
+    'last_synced_etag', // 上传下载成功后保存的云端eTag
+  };
 
   // 1. 初始化：应用启动即调用
   Future<void> init() async {

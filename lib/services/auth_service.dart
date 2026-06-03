@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-04-13 17:08:29
+ * @LastEditTime: 2026-06-03 16:37:46
  * @Description: 解锁与认证
  */
 
@@ -42,6 +42,13 @@ class AuthService {
         // 5. 验证通过, 把DK存入内存供全应用使用
         _sec.setDK(dk);
         await SettingsService().loadDbSettings();
+        // 确保本地设备状态与数据库版本对齐
+        final s = SettingsService();
+        String? dbRev = s.get('local_revision');
+        if (dbRev != null) {
+          // 强制更新本地配置文件的快照
+          await s.set('last_synced_revision', dbRev);
+        }
         return true;
       }
       return false;
