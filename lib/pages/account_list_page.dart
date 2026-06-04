@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-03 19:56:05
+ * @LastEditTime: 2026-06-04 18:09:07
  * @Description: 账户信息页(查看页)
  */
 
@@ -716,10 +716,11 @@ class _AccountListPageState extends State<AccountListPage> {
             SelectableText(
               rk,
               style: const TextStyle(
+                fontFamily: 'Consolas',
+                fontFamilyFallback: ['Microsoft YaHei'],
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: Colors.blue,
-                fontFamily: 'monospace', // 使用等宽字体
               ),
             ),
           ],
@@ -734,9 +735,9 @@ class _AccountListPageState extends State<AccountListPage> {
               await _checkDbStatus();
               await _refreshAccountList();
               if (context.mounted) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text("恢复密钥已复制至剪切板，保险箱已就绪")));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("恢复密钥已复制至剪切板，保险箱已就绪")),
+                );
               }
             },
             child: const Text("复制恢复密钥"),

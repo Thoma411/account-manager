@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-03 21:26:40
+ * @LastEditTime: 2026-06-04 18:11:53
  * @Description: 主框架
  */
 
@@ -480,9 +480,11 @@ class SettingsPageState extends State<SettingsPage> {
               SelectableText(
                 rk,
                 style: const TextStyle(
+                  fontFamily: 'Consolas',
+                  fontFamilyFallback: ['Microsoft YaHei'],
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: Colors.blue,
-                  fontSize: 16,
                 ),
               ),
             ],
