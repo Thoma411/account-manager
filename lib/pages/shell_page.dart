@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-04 18:11:53
+ * @LastEditTime: 2026-06-04 18:53:46
  * @Description: 主框架
  */
 
@@ -509,6 +509,84 @@ class SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  // 弹出手动重置RK的确认对话框
+  void _handleManualRotateRK() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("重置恢复密钥"),
+        content: const Text("确认重置将生成新恢复密钥，原恢复密钥会立即失效。仅在你认为恢复密钥泄露时重置。"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("取消"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                // 执行轮转逻辑
+                final String newRk = await SecurityService()
+                    .rotateRecoveryKey();
+                if (!context.mounted) return;
+                Navigator.pop(context); // 关闭确认弹窗
+                _showNewRKDisplay(newRk); // 弹出展示新密钥的对话框
+              } catch (e) {
+                if (mounted) MessageUtil.show(context, "重置失败：$e");
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text("确认重置"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 重置RK后新RK的展示框
+  void _showNewRKDisplay(String rk) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // 强制用户点击确认
+      builder: (context) => AlertDialog(
+        title: const Text("新恢复密钥已生成"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              "原恢复密钥已丢弃，请妥善保存新恢复密钥：",
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 20),
+            SelectableText(
+              rk,
+              style: const TextStyle(
+                fontFamily: 'Consolas',
+                fontFamilyFallback: ['Microsoft YaHei'],
+                fontWeight: FontWeight.bold,
+                color: Colors.blue,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: rk));
+              if (!context.mounted) return;
+              Navigator.pop(context);
+              MessageUtil.show(context, "恢复密钥已复制至剪切板，请妥善保存");
+            },
+            child: const Text("复制恢复密钥"),
+          ),
+        ],
+      ),
+    );
+  }
+
   // 弹出修改主密码MP对话框
   void _showChangePasswordDialog() {
     final oldPwController = TextEditingController();
@@ -643,6 +721,14 @@ class SettingsPageState extends State<SettingsPage> {
           leading: const Icon(Icons.key_outlined),
           enabled: _hasDb, // 仅在有库时可用
           onTap: _showViewRKDialog,
+        ),
+        const Divider(),
+        ListTile(
+          title: const Text("重置恢复密钥"),
+          subtitle: const Text("丢弃旧密钥并生成全新的恢复凭据"),
+          leading: const Icon(Icons.refresh_outlined),
+          enabled: _hasDb, // 仅在有库时可用
+          onTap: _handleManualRotateRK,
         ),
         const Divider(),
         ListTile(
