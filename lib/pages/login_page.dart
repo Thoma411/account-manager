@@ -1,12 +1,13 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-22 19:47:45
- * @LastEditTime: 2026-06-03 21:47:29
+ * @LastEditTime: 2026-06-04 18:11:58
  * @Description: 初始登入界面
  */
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:encrypt/encrypt.dart' as enc;
 
 import '../pages/shell_page.dart'; // 用于跳转到 MainShell
@@ -89,7 +90,7 @@ class _UnlockPageState extends State<UnlockPage> {
                 sec.setDK(dk);
                 if (!context.mounted) return;
                 Navigator.pop(context); // 关闭RK输入框
-                _showResetPasswordDialog(); // 进入下一步: 设置新密码
+                _showResetPasswordDialog(); // 弹出重置密码对话框
               } catch (e) {
                 if (!context.mounted) return;
                 MessageUtil.show(context, "密钥验证失败，请检查输入是否正确");
@@ -156,18 +157,62 @@ class _UnlockPageState extends State<UnlockPage> {
                 );
                 await storage.saveMetadata('edk_m', newEdkM);
 
+                final newRk = await sec.rotateRecoveryKey(); // 重置RK
+
                 if (!context.mounted) return;
                 Navigator.pop(context);
-                MessageUtil.show(context, "密码重置成功，已自动登录");
-                // 直接进入主界面
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (context) => const ShellPage()),
-                );
+                _showNewRKNotice(newRk); // 弹出新RK展示框
               } catch (e) {
                 if (mounted) MessageUtil.show(context, "重置失败：$e");
               }
             },
-            child: const Text("完成并登录"),
+            child: const Text("生成新的恢复密钥"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 重置完密码后的新RK展示框
+  void _showNewRKNotice(String newRk) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text("请保存新的恢复密钥"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("如果您忘记了主密码，这是找回数据的唯一方法，请务必妥善保存。"),
+            const SizedBox(height: 20),
+            SelectableText(
+              newRk,
+              style: const TextStyle(
+                fontFamily: 'Consolas',
+                fontFamilyFallback: ['Microsoft YaHei'],
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: newRk));
+              if (!context.mounted) return;
+              Navigator.pop(context); // 关闭展示框
+              // 此时才正式进入主界面
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => const ShellPage()),
+              );
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("恢复密钥已复制至剪切板，保险箱已就绪")),
+              );
+            },
+            child: const Text("复制恢复密钥"),
           ),
         ],
       ),
