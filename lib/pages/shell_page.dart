@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-06 16:48:53
+ * @LastEditTime: 2026-06-06 17:46:03
  * @Description: 主框架
  */
 
@@ -440,6 +440,52 @@ class SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  // 导出警告对话框
+  void _handleExport() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("导出安全警告"),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start, // 左对齐
+          children: [
+            Text(
+              "导出操作会将您的所有账户密码以【明文】形式保存为 CSV 文件。",
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 10),
+            Text("任何人打开此文件均可见您的敏感信息，请在安全的环境下操作，并在使用后妥善保管或销毁该文件。"),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("取消"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context); // 先关警告框
+              try {
+                bool success = await CsvService().exportToCsv();
+                if (success && context.mounted) {
+                  MessageUtil.show(context, "数据已成功导出至本地");
+                }
+              } catch (e) {
+                if (context.mounted) MessageUtil.show(context, "导出失败: $e");
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text("确认导出"),
+          ),
+        ],
+      ),
+    );
+  }
+
   // 弹出展示RK对话框
   void _showViewRKDialog() async {
     final sec = SecurityService();
@@ -727,12 +773,10 @@ class SettingsPageState extends State<SettingsPage> {
         const Divider(),
         ListTile(
           title: const Text("导出为 CSV"),
-          subtitle: const Text("将所有账户信息以明文形式导出（请谨慎操作）"),
+          subtitle: const Text("将所有账户信息以明文形式导出"),
           leading: const Icon(Icons.file_download),
           enabled: _hasDb,
-          onTap: () {
-            // TODO: 实现导出逻辑
-          },
+          onTap: _handleExport,
         ),
         const Divider(),
 

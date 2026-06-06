@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 21:55:09
- * @LastEditTime: 2026-06-06 15:58:37
+ * @LastEditTime: 2026-06-06 17:35:04
  * @Description: 13字段实体定义
  */
 
@@ -76,7 +76,7 @@ class Account {
     };
   }
 
-  // 从数据库 Map 还原
+  // 从数据库Map还原
   factory Account.fromMap(Map<String, dynamic> map) {
     final sec = SecurityService();
     final dk = sec.currentDataKey;
@@ -133,5 +133,24 @@ class Account {
       status: int.tryParse(row[12]?.toString() ?? "1") ?? 1,
       lastModified: DateTime.now().toIso8601String(),
     );
+  }
+
+  // 转换为CSV行
+  List<dynamic> toCsvRow() {
+    return [
+      platform, // 0
+      name, // 1
+      userId, // 2
+      email, // 3
+      pswd, // 4
+      url, // 5
+      phone, // 6
+      birth, // 7
+      notes, // 8
+      signupDate, // 9
+      realName ? '是' : '否', // 10
+      tags.join(','), // 11
+      status, // 12
+    ];
   }
 }
