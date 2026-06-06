@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 21:55:09
- * @LastEditTime: 2026-06-05 23:02:57
+ * @LastEditTime: 2026-06-06 15:58:37
  * @Description: 13字段实体定义
  */
 
@@ -123,7 +123,10 @@ class Account {
       birth: row[7]?.toString(),
       notes: row[8]?.toString(),
       signupDate: row[9]?.toString() ?? "",
-      realName: row[10]?.toString() == '是' || row[10]?.toString() == 'true',
+      realName:
+          row[10]?.toString() == '1' ||
+          row[10]?.toString() == 'true' ||
+          row[10]?.toString() == '是',
       tags: row[11] != null && row[11].toString().isNotEmpty
           ? row[11].toString().split(',')
           : [],
