@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-04 18:53:46
+ * @LastEditTime: 2026-06-06 00:29:34
  * @Description: 主框架
  */
 
@@ -149,17 +149,17 @@ class _ShellPageState extends State<ShellPage> {
 
     // 临时变量，用于存储弹窗内的输入
     String platform = '',
-        pfType = '',
-        pfRemark = '',
+        url = '',
         name = '',
         userId = '',
         email = '',
         pswd = '',
         phone = '',
         birth = '',
-        infoRemark = '',
+        notes = '',
         signupDate = DateTime.now().toString().split(' ')[0],
         tagsStr = '';
+    int status = 1; // 默认使用中
     bool realName = false;
 
     showDialog(
@@ -196,12 +196,21 @@ class _ShellPageState extends State<ShellPage> {
                         ),
                         const Divider(height: 32),
                         TextFormField(
-                          decoration: const InputDecoration(labelText: "平台类型"),
-                          onChanged: (v) => pfType = v,
+                          decoration: const InputDecoration(labelText: "网址"),
+                          onChanged: (v) => url = v,
                         ),
-                        TextFormField(
-                          decoration: const InputDecoration(labelText: "平台备注"),
-                          onChanged: (v) => pfRemark = v,
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<int>(
+                          initialValue: status,
+                          decoration: const InputDecoration(labelText: "账户状态"),
+                          items: const [
+                            DropdownMenuItem(value: 1, child: Text("使用中")),
+                            DropdownMenuItem(value: 0, child: Text("未注册")),
+                            DropdownMenuItem(value: 2, child: Text("已注销")),
+                            DropdownMenuItem(value: 3, child: Text("无法使用")),
+                          ],
+                          onChanged: (v) =>
+                              setDialogState(() => status = v ?? 1),
                         ),
                         TextFormField(
                           decoration: const InputDecoration(labelText: "用户ID"),
@@ -230,8 +239,8 @@ class _ShellPageState extends State<ShellPage> {
                           onChanged: (v) => tagsStr = v,
                         ),
                         TextFormField(
-                          decoration: const InputDecoration(labelText: "账户备注"),
-                          onChanged: (v) => infoRemark = v,
+                          decoration: const InputDecoration(labelText: "备注"),
+                          onChanged: (v) => notes = v,
                         ),
                         TextFormField(
                           decoration: const InputDecoration(labelText: "注册时间"),
@@ -263,15 +272,15 @@ class _ShellPageState extends State<ShellPage> {
                       final newAccount = Account(
                         id: const Uuid().v4(),
                         platform: platform,
-                        pfType: pfType,
-                        pfRemark: pfRemark,
+                        url: url,
+                        status: status,
                         name: name,
                         userId: userId,
                         email: email,
                         pswd: pswd,
                         phone: phone,
                         birth: birth,
-                        infoRemark: infoRemark,
+                        notes: notes,
                         signupDate: signupDate,
                         realName: realName,
                         tags: tagsStr.isEmpty ? [] : tagsStr.split(','),
@@ -279,9 +288,7 @@ class _ShellPageState extends State<ShellPage> {
                       );
 
                       await StorageService().insertAccount(newAccount);
-
                       if (!context.mounted) return;
-
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text("账户添加成功！请刷新列表")),

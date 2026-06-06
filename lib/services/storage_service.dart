@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-01 00:39:33
+ * @LastEditTime: 2026-06-05 23:07:27
  * @Description: 与SQLite交互的方法
  */
 
@@ -70,10 +70,12 @@ class StorageService {
           // 创建账户条目表
           await db.execute('''
             CREATE TABLE accounts (
-              id TEXT PRIMARY KEY,
-              platform TEXT, pf_type TEXT, pf_remark TEXT, tags TEXT,
-              name TEXT, user_id TEXT, email TEXT, pswd TEXT, phone TEXT, birth TEXT,
-              info_remark TEXT, signup_date TEXT, real_name INTEGER, last_modified TEXT
+              id TEXT PRIMARY KEY, platform TEXT, url TEXT,
+              status INTEGER, tags TEXT,
+              name TEXT, user_id TEXT, email TEXT, pswd TEXT,
+              phone TEXT, birth TEXT,
+              notes TEXT, signup_date TEXT, real_name INTEGER,
+              last_modified TEXT
             )
           ''');
           // 创建系统元数据表

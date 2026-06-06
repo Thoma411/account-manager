@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-04 18:09:07
+ * @LastEditTime: 2026-06-06 15:21:51
  * @Description: 账户信息页(查看页)
  */
 
@@ -10,6 +10,7 @@ import 'package:encrypt/encrypt.dart' as enc;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:webdav_client/webdav_client.dart' as dav;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/account.dart'; // 导入模型
 import '../services/storage_service.dart'; // 导入存储服务
@@ -92,10 +93,7 @@ class _AccountListPageState extends State<AccountListPage> {
           final userIdMatch = acc.userId.toLowerCase().contains(lowercaseQuery);
 
           // 2. 备注类字段匹配（使用 ?? '' 处理 null 值）
-          final pfRemarkMatch = (acc.pfRemark ?? "").toLowerCase().contains(
-            lowercaseQuery,
-          );
-          final infoRemarkMatch = (acc.infoRemark ?? "").toLowerCase().contains(
+          final notesMatch = (acc.notes ?? "").toLowerCase().contains(
             lowercaseQuery,
           );
 
@@ -108,8 +106,7 @@ class _AccountListPageState extends State<AccountListPage> {
           return platformMatch ||
               nameMatch ||
               userIdMatch ||
-              pfRemarkMatch ||
-              infoRemarkMatch ||
+              notesMatch ||
               tagsMatch;
         }).toList();
       }
@@ -359,7 +356,7 @@ class _AccountListPageState extends State<AccountListPage> {
                   SizedBox(
                     width: col2,
                     child: const Text(
-                      '类型',
+                      '状态',
                       style: TextStyle(fontWeight: FontWeight.w500),
                     ),
                   ),
@@ -411,7 +408,10 @@ class _AccountListPageState extends State<AccountListPage> {
                             SizedBox(width: col1, child: Text(acc.platform)),
                           ),
                           DataCell(
-                            SizedBox(width: col2, child: Text(acc.pfType)),
+                            SizedBox(
+                              width: col2,
+                              child: _buildStatusChip(acc.status),
+                            ),
                           ),
                           DataCell(
                             SizedBox(width: col3, child: Text(acc.name)),
@@ -437,7 +437,7 @@ class _AccountListPageState extends State<AccountListPage> {
     );
   }
 
-  // --- 改动点 5: 详情面板接收 Account 对象而非 Map ---
+  // 详情面板接收Account对象而非Map
   Widget _buildDetailPanel(Account account) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -462,17 +462,19 @@ class _AccountListPageState extends State<AccountListPage> {
             children: [
               _buildInfoRow("平台名称", account.platform),
               _buildInfoRow("用户昵称", account.name),
-              _buildInfoRow("平台类型", account.pfType),
-              _buildInfoRow("备注(平台)", account.pfRemark ?? "无"),
-              _buildInfoRow("标签", account.tags.join(", ")),
+              _buildInfoRowWithLink("网址", account.url),
+              _buildInfoRow("状态", _getStatusText(account.status)),
+              const Divider(),
               _buildInfoRow("用户ID", account.userId),
               _buildInfoRow("绑定邮箱", account.email),
               _buildInfoRow("绑定手机", account.phone),
               _buildInfoRow("密码", account.pswd),
+              _buildInfoRow("备注", account.notes ?? "无"),
+              const Divider(),
+              _buildInfoRow("标签", account.tags.join(", ")),
               _buildInfoRow("预留生日", account.birth ?? "未填写"),
               _buildInfoRow("注册日期", account.signupDate),
               _buildInfoRow("实名标记", account.realName ? "是" : "否"),
-              _buildInfoRow("备注(账户)", account.infoRemark ?? "无"),
               _buildInfoRow("最后修改于", DateUtil.format(account.lastModified)),
               const SizedBox(height: 20),
               //*修改条目按钮
@@ -514,6 +516,66 @@ class _AccountListPageState extends State<AccountListPage> {
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
           ),
         ],
+      ),
+    );
+  }
+
+  // 辅助跳转函数
+  Widget _buildInfoRowWithLink(String label, String url) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+          InkWell(
+            onTap: url.isEmpty ? null : () => launchUrl(Uri.parse(url)),
+            child: Text(
+              url.isEmpty ? "未填写" : url,
+              style: TextStyle(
+                fontSize: 14,
+                color: url.isEmpty ? Colors.black87 : Colors.blue,
+                decoration: url.isEmpty ? null : TextDecoration.underline,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 将数字状态码转换为易读文字
+  String _getStatusText(int status) {
+    const map = {0: "未注册", 1: "使用中", 2: "已注销", 3: "无法使用"};
+    return map[status] ?? "未知";
+  }
+
+  // 构建表格中的彩色状态标签
+  Widget _buildStatusChip(int status) {
+    Color color;
+    switch (status) {
+      case 1:
+        color = Colors.green;
+        break;
+      case 2:
+        color = Colors.grey;
+        break;
+      case 3:
+        color = Colors.red;
+        break;
+      default:
+        color = Colors.orange;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        _getStatusText(status),
+        style: TextStyle(color: color, fontSize: 10),
       ),
     );
   }
@@ -753,15 +815,15 @@ class _AccountListPageState extends State<AccountListPage> {
 
     // 使用现有账户的数据初始化变量
     String platform = account.platform;
-    String pfType = account.pfType;
-    String pfRemark = account.pfRemark ?? '';
+    String url = account.url;
+    int status = account.status;
     String name = account.name;
     String userId = account.userId;
     String email = account.email;
     String pswd = account.pswd;
     String phone = account.phone;
     String birth = account.birth ?? '';
-    String infoRemark = account.infoRemark ?? '';
+    String notes = account.notes ?? '';
     String signupDate = account.signupDate;
     String tagsStr = account.tags.join(',');
     bool realName = account.realName;
@@ -799,14 +861,21 @@ class _AccountListPageState extends State<AccountListPage> {
                     ),
                     const Divider(height: 32),
                     TextFormField(
-                      initialValue: pfType,
-                      decoration: const InputDecoration(labelText: "平台类型"),
-                      onChanged: (v) => pfType = v,
+                      initialValue: url,
+                      decoration: const InputDecoration(labelText: "网址"),
+                      onChanged: (v) => url = v,
                     ),
-                    TextFormField(
-                      initialValue: pfRemark,
-                      decoration: const InputDecoration(labelText: "平台备注"),
-                      onChanged: (v) => pfRemark = v,
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<int>(
+                      initialValue: status,
+                      decoration: const InputDecoration(labelText: "账户状态"),
+                      items: const [
+                        DropdownMenuItem(value: 1, child: Text("使用中")),
+                        DropdownMenuItem(value: 0, child: Text("未注册")),
+                        DropdownMenuItem(value: 2, child: Text("已注销")),
+                        DropdownMenuItem(value: 3, child: Text("无法使用")),
+                      ],
+                      onChanged: (v) => setDialogState(() => status = v ?? 1),
                     ),
                     TextFormField(
                       initialValue: userId,
@@ -839,9 +908,9 @@ class _AccountListPageState extends State<AccountListPage> {
                       onChanged: (v) => tagsStr = v,
                     ),
                     TextFormField(
-                      initialValue: infoRemark,
-                      decoration: const InputDecoration(labelText: "账户备注"),
-                      onChanged: (v) => infoRemark = v,
+                      initialValue: notes,
+                      decoration: const InputDecoration(labelText: "备注"),
+                      onChanged: (v) => notes = v,
                     ),
                     TextFormField(
                       initialValue: signupDate,
@@ -871,15 +940,15 @@ class _AccountListPageState extends State<AccountListPage> {
                   final updatedAccount = Account(
                     id: account.id, // 关键：使用原有的 ID
                     platform: platform,
-                    pfType: pfType,
-                    pfRemark: pfRemark,
+                    url: url,
+                    status: status,
                     name: name,
                     userId: userId,
                     email: email,
                     pswd: pswd,
                     phone: phone,
                     birth: birth,
-                    infoRemark: infoRemark,
+                    notes: notes,
                     signupDate: signupDate,
                     realName: realName,
                     tags: tagsStr.isEmpty ? [] : tagsStr.split(','),
