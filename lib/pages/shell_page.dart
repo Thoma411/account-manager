@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-06 00:29:34
+ * @LastEditTime: 2026-06-06 16:48:53
  * @Description: 主框架
  */
 
@@ -42,11 +42,9 @@ class _ShellPageState extends State<ShellPage> {
   void initState() {
     super.initState();
     _pages = [
-      const AccountListPage(),
-      SyncPage(key: _syncPageKey),
-      const MigrationPage(),
-      const Center(child: Text("回收站 (开发中)")),
-      SettingsPage(key: _settingsPageKey),
+      const AccountListPage(), // index0
+      SyncPage(key: _syncPageKey), // index1
+      SettingsPage(key: _settingsPageKey), // index2
     ];
   }
 
@@ -74,14 +72,6 @@ class _ShellPageState extends State<ShellPage> {
                   NavigationRailDestination(
                     icon: Icon(Icons.sync),
                     label: Text('云同步'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.file_download),
-                    label: Text('导入导出'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.delete_outline),
-                    label: Text('回收站'),
                   ),
                   NavigationRailDestination(
                     icon: Icon(Icons.settings),
@@ -116,24 +106,24 @@ class _ShellPageState extends State<ShellPage> {
     final s = SettingsService();
     bool hasWebDav = s.get('webdav_url') != null && s.get('webdav_pwd') != null;
     bool hasDb = await StorageService().isDatabaseExists();
-
-    // 情况1: 未建库 只允许留在主页
-    if (!hasDb && index != 0 && index != 4) {
+    // 设置页无需拦截
+    if (index == 2) {
+      setState(() => _selectedIndex = index);
+      _settingsPageKey.currentState?.checkDbStatus(); // 刷新设置界面配置webdav选项
+      return;
+    }
+    // 情况1: 未建库仅允许在主页(0)
+    if (!hasDb && index != 0) {
       _showGuardDialog("访问受限", "请先在主页创建新数据库");
       return;
     }
-    // 情况2: 未配WebDAV 进入云同步页
+    // 情况2: 未配WebDAV进入云同步页(1)
     if (!hasWebDav && index == 1) {
       _showGuardDialog("访问受限", "请先在设置中配置并连接 WebDAV 云盘");
       return;
     }
     setState(() => _selectedIndex = index);
-    if (index == 4) {
-      _settingsPageKey.currentState?.checkDbStatus(); // 刷新设置界面配置webdav选项
-    }
-    if (index == 1) {
-      _syncPageKey.currentState?.refreshStatus(); // 刷新云同步界面
-    }
+    if (index == 1) _syncPageKey.currentState?.refreshStatus(); // 刷新云同步界面
   }
 
   // 弹出新增账户对话框
@@ -355,9 +345,7 @@ class SettingsPageState extends State<SettingsPage> {
   void checkDbStatus() async {
     bool exists = await StorageService().isDatabaseExists();
     if (!mounted) return;
-    setState(() {
-      _hasDb = exists;
-    });
+    setState(() => _hasDb = exists);
   }
 
   // 在用户确认连接及冲突处理后正式将WebDAV凭据持久化到加密数据库中
@@ -709,19 +697,50 @@ class SettingsPageState extends State<SettingsPage> {
           secondary: const Icon(Icons.brightness_6),
         ),
         const Divider(),
+
         const Text(
-          "数据同步",
+          "数据管理",
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 10),
         ListTile(
-          title: const Text("云端WebDAV配置"),
+          title: const Text("云端 WebDAV 配置"),
           subtitle: Text(_hasDb ? "已解锁，可配置云备份凭据" : "请先初始化数据库"),
           leading: const Icon(Icons.cloud_queue),
           enabled: _hasDb,
           onTap: _hasDb ? _showWebDavDialog : null,
         ),
         const Divider(),
+        ListTile(
+          title: const Text("从 CSV 导入账户"),
+          subtitle: const Text("支持 13 字段标准格式的批量数据导入"),
+          leading: const Icon(Icons.upload_file),
+          enabled: _hasDb, // 必须建库后才能导入
+          onTap: () async {
+            int count = await CsvService().pickAndImportCsv();
+            if (!context.mounted) return;
+            if (count > 0) {
+              MessageUtil.show(context, "成功导入 $count 条数据！");
+            }
+          },
+        ),
+        const Divider(),
+        ListTile(
+          title: const Text("导出为 CSV"),
+          subtitle: const Text("将所有账户信息以明文形式导出（请谨慎操作）"),
+          leading: const Icon(Icons.file_download),
+          enabled: _hasDb,
+          onTap: () {
+            // TODO: 实现导出逻辑
+          },
+        ),
+        const Divider(),
+
+        const Text(
+          "安全",
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
         ListTile(
           title: const Text("查看恢复密钥"),
           subtitle: const Text("主密码遗失时，凭此密钥可重置密码并找回数据"),
@@ -746,57 +765,18 @@ class SettingsPageState extends State<SettingsPage> {
           onTap: _showChangePasswordDialog,
         ),
         const Divider(),
+
+        const Text(
+          "其他",
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
         const ListTile(
           title: Text("关于项目"),
           subtitle: Text("accountManager v1.0.0-Beta"),
           leading: Icon(Icons.info_outline),
         ),
       ],
-    );
-  }
-}
-
-// 导入导出界面
-class MigrationPage extends StatelessWidget {
-  const MigrationPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.upload_file, size: 64, color: Colors.blue),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () async {
-              // 1.检查本地是否有库
-              bool hasDb = await StorageService().isDatabaseExists();
-              if (!hasDb) {
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("错误：请先创建数据库并设置主密码")),
-                );
-                return;
-              }
-              // 2.调用导入服务
-              int count = await CsvService().pickAndImportCsv();
-              // 3.弹窗提示结果
-              if (context.mounted) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text('成功导入 $count 条数据！')));
-              }
-            },
-            child: const Text("导入账户 (CSV)"),
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            "请确保 CSV 列顺序符合设计文档规范",
-            style: TextStyle(color: Colors.grey),
-          ),
-        ],
-      ),
     );
   }
 }
