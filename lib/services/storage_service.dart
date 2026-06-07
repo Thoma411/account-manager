@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-05 23:07:27
+ * @LastEditTime: 2026-06-07 21:31:25
  * @Description: 与SQLite交互的方法
  */
 
@@ -134,7 +134,10 @@ class StorageService {
     if (!exists) return [];
 
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query('accounts');
+    final List<Map<String, dynamic>> maps = await db.query(
+      'accounts',
+      orderBy: 'platform COLLATE NOCASE ASC',
+    );
     return List.generate(maps.length, (i) => Account.fromMap(maps[i]));
   }
 

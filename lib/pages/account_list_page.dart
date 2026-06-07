@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-07 20:43:16
+ * @LastEditTime: 2026-06-07 22:43:40
  * @Description: 账户信息页(查看页)
  */
 
@@ -30,7 +30,7 @@ class _AccountListPageState extends State<AccountListPage> {
   bool _isDbCreated = true; // 检测本地数据库是否存在
 
   // 数据源由Map改为Account对象列表
-  int? _selectedRowIndex;
+  String? _selectedAccountId;
   bool _isPanelOpen = false;
 
   // 查找方法定义与数据结构
@@ -58,7 +58,6 @@ class _AccountListPageState extends State<AccountListPage> {
       _tagsController;
   int _currentStatus = 1;
   bool _currentRealName = false;
-  String _currentTagsStr = '';
 
   // 增加初始化逻辑，进入页面即拉取数据库
   @override
@@ -184,7 +183,7 @@ class _AccountListPageState extends State<AccountListPage> {
 
                 Navigator.of(context).pop(); // 关闭弹窗
                 setState(() {
-                  _selectedRowIndex = null; // 删除后立即清空选中索引
+                  _selectedAccountId = null;
                   _isPanelOpen = false; // 关闭面板
                 });
                 _refreshAccountList(); // 刷新列表
@@ -201,10 +200,11 @@ class _AccountListPageState extends State<AccountListPage> {
     );
   }
 
+  // 点击账户卡片时触发
   void _onAccountSelected(int index) {
     final acc = _displayAccounts[index];
     setState(() {
-      _selectedRowIndex = index;
+      _selectedAccountId = acc.id;
       _isPanelOpen = true;
       _isEditing = false; // 切换条目时默认设为只读
 
@@ -225,6 +225,7 @@ class _AccountListPageState extends State<AccountListPage> {
     });
   }
 
+  // 收起右侧详情页
   void _closePanel() {
     setState(() {
       _isPanelOpen = false;
@@ -259,10 +260,8 @@ class _AccountListPageState extends State<AccountListPage> {
                       : ListView.builder(
                           itemCount: _displayAccounts.length,
                           itemBuilder: (context, index) {
-                            return _buildAccountCard(
-                              _displayAccounts[index],
-                              index,
-                            );
+                            final acc = _displayAccounts[index];
+                            return _buildAccountCard(acc, index);
                           },
                         ),
                 ),
@@ -300,12 +299,18 @@ class _AccountListPageState extends State<AccountListPage> {
                   ],
                 ),
                 // 关键：如果没选中任何行，面板内容显示为空，防止报错
-                child:
-                    (_isPanelOpen &&
-                        _selectedRowIndex != null &&
-                        _selectedRowIndex! < _displayAccounts.length) // 确保索引没越界
-                    ? _buildDetailPanel(_displayAccounts[_selectedRowIndex!])
-                    : const SizedBox.shrink(), // 如果越界或没选中则渲染一个空盒子
+                child: (_isPanelOpen && _selectedAccountId != null)
+                    ? (() {
+                        // 逻辑：在当前显示的列表中，找那个 ID 匹配的账户对象
+                        // 这样无论它在列表的第几个位置，详情页都能精准锁定它
+                        final account = _displayAccounts.firstWhere(
+                          (acc) => acc.id == _selectedAccountId,
+                          orElse: () =>
+                              _displayAccounts.first, // 防护：万一没找到则回退到第一条
+                        );
+                        return _buildDetailPanel(account);
+                      })()
+                    : const SizedBox.shrink(),
               ),
             ),
           ],
@@ -609,7 +614,7 @@ class _AccountListPageState extends State<AccountListPage> {
     if (_isEditing) {
       // 执行保存逻辑
       if (_formKey.currentState!.validate()) {
-        final acc = _displayAccounts[_selectedRowIndex!];
+        final acc = _allAccounts.firstWhere((a) => a.id == _selectedAccountId);
         final updated = Account(
           id: acc.id, // 保持ID
           platform: _platformController.text,
@@ -624,7 +629,9 @@ class _AccountListPageState extends State<AccountListPage> {
           notes: _notesController.text,
           signupDate: _signupDateController.text,
           realName: _currentRealName,
-          tags: _currentTagsStr.isEmpty ? [] : _currentTagsStr.split(','),
+          tags: _tagsController.text.trim().isEmpty
+              ? []
+              : _tagsController.text.split(','),
           lastModified: DateTime.now().toIso8601String(),
         );
         await StorageService().insertAccount(updated);
@@ -682,7 +689,7 @@ class _AccountListPageState extends State<AccountListPage> {
 
   // 构建账户卡片组件
   Widget _buildAccountCard(Account acc, int index) {
-    bool isSelected = _selectedRowIndex == index;
+    bool isSelected = _selectedAccountId == acc.id;
     bool isPasswordVisible = _visiblePasswordIds.contains(acc.id);
     Color statusColor = _getStatusColor(acc.status);
     return Padding(
@@ -835,11 +842,7 @@ class _AccountListPageState extends State<AccountListPage> {
                 const Divider(),
                 // 分组2: 平台与标记
                 _buildEditableUrlRow(), // 网址展示/编辑
-                _buildEditableInfoRow(
-                  "标签 (逗号分隔)",
-                  _tagsController,
-                  onChanged: (v) => _currentTagsStr = v,
-                ),
+                _buildEditableInfoRow("标签 (逗号分隔)", _tagsController),
                 const Divider(),
                 // 分组3: 辅助信息
                 _buildEditableInfoRow("生日", _birthController),
@@ -901,8 +904,9 @@ class _AccountListPageState extends State<AccountListPage> {
     bool isMandatory = false,
     bool isPassword = false,
     int maxLines = 1,
-    ValueChanged<String>? onChanged,
   }) {
+    final bool isMasked =
+        isPassword && !_visiblePasswordIds.contains(_selectedAccountId!);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Column(
@@ -911,33 +915,39 @@ class _AccountListPageState extends State<AccountListPage> {
           Text(label, style: const TextStyle(color: Colors.grey, fontSize: 11)),
           const SizedBox(height: 4),
           if (!_isEditing) // 只读状态
-            Text(
-              (isPassword &&
-                      !_visiblePasswordIds.contains(
-                        _displayAccounts[_selectedRowIndex!].id,
-                      ))
-                  ? "••••••••"
-                  : (controller.text.isEmpty ? "-" : controller.text),
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            Container(
+              height: 24, // 统一高度
+              alignment: Alignment.centerLeft,
+              child: Text(
+                isMasked
+                    ? "••••••••"
+                    : (controller.text.isEmpty ? "-" : controller.text),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             )
           else
-            TextFormField(
-              controller: controller,
-              maxLines: maxLines,
-              onChanged: onChanged,
-              obscureText:
-                  isPassword &&
-                  !_visiblePasswordIds.contains(
-                    _displayAccounts[_selectedRowIndex!].id,
-                  ),
-              style: const TextStyle(fontSize: 14),
-              decoration: const InputDecoration(
-                isDense: true,
-                contentPadding: EdgeInsets.symmetric(vertical: 8),
+            SizedBox(
+              height: 24, // 保持与只读模式高度绝对一致
+              child: TextFormField(
+                controller: controller,
+                maxLines: 1, // 备注字段如果需要多行，单独处理
+                obscureText: isMasked,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                decoration: const InputDecoration(
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero, // 彻底消除内边距
+                  border: InputBorder.none, // 编辑时也隐藏下划线，保持清爽
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.blue, width: 1),
+                  ), // 仅在聚焦时显示下划线
+                ),
               ),
-              validator: isMandatory
-                  ? (v) => (v == null || v.isEmpty) ? "必填项" : null
-                  : null,
             ),
         ],
       ),
@@ -1044,8 +1054,9 @@ class _AccountListPageState extends State<AccountListPage> {
 
   // 构建可编辑url展示行
   Widget _buildEditableUrlRow() {
-    if (!_isEditing) return _buildInfoRowWithLink("网址", _urlController.text);
-    return _buildEditableInfoRow("网址", _urlController);
+    return _isEditing
+        ? _buildEditableInfoRow("网址", _urlController)
+        : _buildInfoRowWithLink("网址", _urlController.text);
   }
 
   // 构建实名标记行
@@ -1059,12 +1070,6 @@ class _AccountListPageState extends State<AccountListPage> {
       contentPadding: EdgeInsets.zero,
       onChanged: (v) => setState(() => _currentRealName = v ?? false),
     );
-  }
-
-  // 将数字状态码转换为易读文字
-  String _getStatusText(int status) {
-    const map = {0: "未注册", 1: "使用中", 2: "已注销", 3: "无法使用"};
-    return map[status] ?? "未知";
   }
 
   // 构建表格中的彩色状态标签
@@ -1095,6 +1100,12 @@ class _AccountListPageState extends State<AccountListPage> {
         style: TextStyle(color: color, fontSize: 10),
       ),
     );
+  }
+
+  // 将数字状态码转换为易读文字
+  String _getStatusText(int status) {
+    const map = {0: "未注册", 1: "使用中", 2: "已注销", 3: "无法使用"};
+    return map[status] ?? "未知";
   }
 
   // 获取状态对应的颜色
