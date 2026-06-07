@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-07 17:10:44
+ * @LastEditTime: 2026-06-07 20:43:16
  * @Description: 账户信息页(查看页)
  */
 
@@ -29,24 +29,74 @@ class AccountListPage extends StatefulWidget {
 class _AccountListPageState extends State<AccountListPage> {
   bool _isDbCreated = true; // 检测本地数据库是否存在
 
-  // 数据源由 Map 改为 Account 对象列表
+  // 数据源由Map改为Account对象列表
   int? _selectedRowIndex;
   bool _isPanelOpen = false;
 
   // 查找方法定义与数据结构
   final TextEditingController _searchController = TextEditingController();
-  final FocusNode _searchFocusNode = FocusNode(); // 用于 Ctrl+F 聚焦
+  final FocusNode _searchFocusNode = FocusNode(); // TODO: 用于Ctrl+F聚焦
   final Set<String> _visiblePasswordIds = {}; // 存储已开启可见性的账户ID
 
   List<Account> _allAccounts = []; // 完整的数据库副本
   List<Account> _displayAccounts = []; // 经过过滤后显示在界面上的列表
 
+  bool _isEditing = false;
+  final _formKey = GlobalKey<FormState>();
+
+  // 详情页字段控制器
+  late TextEditingController _platformController,
+      _nameController,
+      _urlController,
+      _userIdController,
+      _emailController,
+      _pswdController,
+      _phoneController,
+      _birthController,
+      _notesController,
+      _signupDateController,
+      _tagsController;
+  int _currentStatus = 1;
+  bool _currentRealName = false;
+  String _currentTagsStr = '';
+
   // 增加初始化逻辑，进入页面即拉取数据库
   @override
   void initState() {
     super.initState();
+    _platformController = TextEditingController();
+    _nameController = TextEditingController();
+    _urlController = TextEditingController();
+    _userIdController = TextEditingController();
+    _emailController = TextEditingController();
+    _pswdController = TextEditingController();
+    _phoneController = TextEditingController();
+    _birthController = TextEditingController();
+    _notesController = TextEditingController();
+    _signupDateController = TextEditingController();
+    _tagsController = TextEditingController();
     _checkDbStatus();
     _refreshAccountList();
+  }
+
+  // 释放资源防止内存泄露
+  @override
+  void dispose() {
+    _platformController.dispose();
+    _nameController.dispose();
+    _urlController.dispose();
+    _userIdController.dispose();
+    _emailController.dispose();
+    _pswdController.dispose();
+    _phoneController.dispose();
+    _birthController.dispose();
+    _notesController.dispose();
+    _signupDateController.dispose();
+    _tagsController.dispose();
+
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
   }
 
   // 检查数据库状态
@@ -152,9 +202,26 @@ class _AccountListPageState extends State<AccountListPage> {
   }
 
   void _onAccountSelected(int index) {
+    final acc = _displayAccounts[index];
     setState(() {
       _selectedRowIndex = index;
       _isPanelOpen = true;
+      _isEditing = false; // 切换条目时默认设为只读
+
+      // 填充控制器
+      _platformController.text = acc.platform;
+      _nameController.text = acc.name;
+      _urlController.text = acc.url;
+      _userIdController.text = acc.userId;
+      _emailController.text = acc.email;
+      _pswdController.text = acc.pswd;
+      _phoneController.text = acc.phone;
+      _birthController.text = acc.birth ?? "";
+      _notesController.text = acc.notes ?? "";
+      _signupDateController.text = acc.signupDate;
+      _tagsController.text = acc.tags.join(',');
+      _currentStatus = acc.status;
+      _currentRealName = acc.realName;
     });
   }
 
@@ -444,35 +511,87 @@ class _AccountListPageState extends State<AccountListPage> {
 
   // 构建详情面板的顶部区域
   Widget _buildDetailHeader(Account account) {
-    final Color statusColor = _getStatusColor(account.status);
+    final Color statusColor = _getStatusColor(_currentStatus);
     return Container(
       padding: const EdgeInsets.all(24),
       // 背景采用极淡的状态色，增强氛围感
       color: statusColor.withValues(alpha: 0.05),
       child: Row(
         children: [
-          // 左侧大图标
-          _buildLargeLogo(account),
+          _buildLargeLogo(account), // 左侧大图标
           const SizedBox(width: 20),
           // 中间标题与状态标签
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  account.platform,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
+                if (!_isEditing) ...[
+                  // 只读模式：显示标题文字
+                  Text(
+                    account.platform,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                // 调用之前定义的彩色小标签
-                _buildStatusChip(account.status),
+                  const SizedBox(height: 4),
+                  _buildStatusChip(_currentStatus),
+                ] else ...[
+                  // 编辑模式：标题变输入框
+                  TextFormField(
+                    controller: _platformController,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    decoration: const InputDecoration(
+                      hintText: "平台名称",
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                      border: InputBorder.none, // 去掉下划线，看起来更像“就地”编辑
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // 状态变下拉框
+                  SizedBox(
+                    height: 35,
+                    child: DropdownButton<int>(
+                      value: _currentStatus,
+                      isDense: true,
+                      underline: const SizedBox(), // 隐藏下划线
+                      items: const [
+                        DropdownMenuItem(
+                          value: 1,
+                          child: Text("使用中", style: TextStyle(fontSize: 12)),
+                        ),
+                        DropdownMenuItem(
+                          value: 0,
+                          child: Text("未注册", style: TextStyle(fontSize: 12)),
+                        ),
+                        DropdownMenuItem(
+                          value: 2,
+                          child: Text("已注销", style: TextStyle(fontSize: 12)),
+                        ),
+                        DropdownMenuItem(
+                          value: 3,
+                          child: Text("无法使用", style: TextStyle(fontSize: 12)),
+                        ),
+                      ],
+                      onChanged: (v) => setState(() => _currentStatus = v ?? 1),
+                    ),
+                  ),
+                ],
               ],
             ),
+          ),
+          IconButton(
+            onPressed: _toggleEditMode,
+            icon: Icon(
+              _isEditing ? Icons.check_circle_outline : Icons.edit_note,
+              color: _isEditing ? Colors.blue : Colors.blue,
+            ), // 编辑/保存切换按钮
+            tooltip: _isEditing ? "保存修改" : "编辑信息",
           ),
           // 右侧关闭按钮
           IconButton(
@@ -483,6 +602,39 @@ class _AccountListPageState extends State<AccountListPage> {
         ],
       ),
     );
+  }
+
+  // 切换状态(只读/编辑)
+  void _toggleEditMode() async {
+    if (_isEditing) {
+      // 执行保存逻辑
+      if (_formKey.currentState!.validate()) {
+        final acc = _displayAccounts[_selectedRowIndex!];
+        final updated = Account(
+          id: acc.id, // 保持ID
+          platform: _platformController.text,
+          name: _nameController.text,
+          url: _urlController.text,
+          status: _currentStatus,
+          userId: _userIdController.text,
+          email: _emailController.text,
+          pswd: _pswdController.text,
+          phone: _phoneController.text,
+          birth: _birthController.text,
+          notes: _notesController.text,
+          signupDate: _signupDateController.text,
+          realName: _currentRealName,
+          tags: _currentTagsStr.isEmpty ? [] : _currentTagsStr.split(','),
+          lastModified: DateTime.now().toIso8601String(),
+        );
+        await StorageService().insertAccount(updated);
+        await _refreshAccountList();
+        if (mounted) MessageUtil.show(context, "修改已保存");
+        setState(() => _isEditing = false);
+      }
+    } else {
+      setState(() => _isEditing = true); // 切换到编辑状态
+    }
   }
 
   // 构建详情面板顶部的平台大图标/占位符
@@ -507,45 +659,6 @@ class _AccountListPageState extends State<AccountListPage> {
           ),
         ),
       ),
-    );
-  }
-
-  // 构建详情面板底部的操作按钮组(修改与删除)
-  Widget _buildActionButtons(Account account) {
-    return Column(
-      children: [
-        // 修改按钮：主要操作，使用Filled风格或明显的蓝色
-        ElevatedButton.icon(
-          onPressed: () => _showEditAccountDialog(account),
-          icon: const Icon(Icons.edit_rounded, size: 18),
-          label: const Text("修改条目信息"),
-          style: ElevatedButton.styleFrom(
-            minimumSize: const Size(double.infinity, 50),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        // 删除按钮：次要/危险操作，使用红色Outlined风格
-        OutlinedButton.icon(
-          onPressed: () => _confirmDelete(account),
-          icon: const Icon(
-            Icons.delete_forever_rounded,
-            color: Colors.redAccent,
-            size: 18,
-          ),
-          label: const Text("删除此条目", style: TextStyle(color: Colors.redAccent)),
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size(double.infinity, 50),
-            side: const BorderSide(color: Colors.redAccent, width: 1),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        ),
-        const SizedBox(height: 16), // 底部留白，防止按钮贴地
-      ],
     );
   }
 
@@ -704,62 +817,59 @@ class _AccountListPageState extends State<AccountListPage> {
         _buildDetailHeader(account), // 头部
         const Divider(height: 1),
         Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              // 分组1: 核心凭据
-              _buildInfoRow("用户昵称", account.name),
-              _buildInfoRow("登录账号", account.userId),
-              _buildInfoRow("绑定邮箱", account.email),
-              _buildInfoRow("绑定手机", account.phone),
-              // 详情页也加上密码显示/复制逻辑
-              _buildInfoRowWithAction(
-                "密码",
-                _visiblePasswordIds.contains(account.id)
-                    ? account.pswd
-                    : "••••••••",
-                onCopy: () =>
-                    Clipboard.setData(ClipboardData(text: account.pswd)),
-                // 切换按钮
-                action: IconButton(
-                  icon: Icon(
-                    _visiblePasswordIds.contains(account.id)
-                        ? Icons.visibility
-                        : Icons.visibility_off,
-                    size: 18,
-                    color: Colors.blueGrey,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      if (_visiblePasswordIds.contains(account.id)) {
-                        _visiblePasswordIds.remove(account.id);
-                      } else {
-                        _visiblePasswordIds.add(account.id);
-                      }
-                    });
-                  },
+          child: Form(
+            key: _formKey, // 用于保存时的必填校验
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                // 分组1: 核心凭据
+                _buildEditableInfoRow(
+                  "用户昵称",
+                  _nameController,
+                  isMandatory: true,
                 ),
-              ),
-              const Divider(),
-              // 分组2: 平台与标记
-              _buildInfoRowWithLink("网址", account.url),
-              _buildInfoRow(
-                "标签",
-                account.tags.isEmpty ? "无标签" : account.tags.join(", "),
-              ),
-              const Divider(),
-              // 分组3: 辅助信息
-              _buildInfoRow("生日", account.birth ?? "未填写"),
-              _buildInfoRow("实名标记", account.realName ? "已实名" : "未实名"),
-              _buildInfoRow(
-                "注册日期",
-                account.signupDate.isEmpty ? "未记录" : account.signupDate,
-              ),
-              _buildInfoRow("最后修改", DateUtil.format(account.lastModified)),
-              _buildInfoRow("备注", account.notes ?? "-"),
-              const SizedBox(height: 32),
-              _buildActionButtons(account), // 按钮操作区
-            ],
+                _buildEditableInfoRow("登录账号", _userIdController),
+                _buildEditableInfoRow("绑定邮箱", _emailController),
+                _buildEditableInfoRow("绑定手机", _phoneController),
+                _buildEditablePasswordRow(account), // 密码行
+                const Divider(),
+                // 分组2: 平台与标记
+                _buildEditableUrlRow(), // 网址展示/编辑
+                _buildEditableInfoRow(
+                  "标签 (逗号分隔)",
+                  _tagsController,
+                  onChanged: (v) => _currentTagsStr = v,
+                ),
+                const Divider(),
+                // 分组3: 辅助信息
+                _buildEditableInfoRow("生日", _birthController),
+                _buildEditableRealNameRow(), // 实名勾选/展示
+                _buildEditableInfoRow("注册日期", _signupDateController),
+                _buildEditableInfoRow("备注", _notesController, maxLines: 5),
+                _buildInfoRow("最后修改于", DateUtil.format(account.lastModified)),
+                const SizedBox(height: 32),
+                // 按钮操作区
+                OutlinedButton.icon(
+                  onPressed: () => _confirmDelete(account),
+                  icon: const Icon(
+                    Icons.delete_forever,
+                    color: Colors.redAccent,
+                  ),
+                  label: const Text(
+                    "删除此条目",
+                    style: TextStyle(color: Colors.redAccent),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
+                    side: const BorderSide(color: Colors.redAccent),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ],
@@ -784,63 +894,51 @@ class _AccountListPageState extends State<AccountListPage> {
     );
   }
 
-  // 构建带有操作按钮（如复制、查看）的详情展示行
-  Widget _buildInfoRowWithAction(
+  // 构建可编辑信息展示行
+  Widget _buildEditableInfoRow(
     String label,
-    String value, {
-    Widget? action, // 右侧的自定义操作（如：小眼睛切换按钮）
-    VoidCallback? onCopy, // 复制按钮的回调
+    TextEditingController controller, {
+    bool isMandatory = false,
+    bool isPassword = false,
+    int maxLines = 1,
+    ValueChanged<String>? onChanged,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 顶部小标签
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.grey,
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 11)),
           const SizedBox(height: 4),
-          // 内容与按钮行
-          Row(
-            children: [
-              // 展示的文本内容
-              Expanded(
-                child: Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    fontFamily: 'Consolas', // 使用等宽字体，对齐更美观
+          if (!_isEditing) // 只读状态
+            Text(
+              (isPassword &&
+                      !_visiblePasswordIds.contains(
+                        _displayAccounts[_selectedRowIndex!].id,
+                      ))
+                  ? "••••••••"
+                  : (controller.text.isEmpty ? "-" : controller.text),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            )
+          else
+            TextFormField(
+              controller: controller,
+              maxLines: maxLines,
+              onChanged: onChanged,
+              obscureText:
+                  isPassword &&
+                  !_visiblePasswordIds.contains(
+                    _displayAccounts[_selectedRowIndex!].id,
                   ),
-                ),
+              style: const TextStyle(fontSize: 14),
+              decoration: const InputDecoration(
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(vertical: 8),
               ),
-              // 如果传入了自定义 action (比如切换可见性的 IconButton)
-              ?action,
-              // 如果提供了 onCopy 回调，则显示复制按钮
-              if (onCopy != null)
-                IconButton(
-                  icon: const Icon(
-                    Icons.copy_all_rounded,
-                    size: 18,
-                    color: Colors.blueGrey,
-                  ),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(), // 紧凑布局
-                  splashRadius: 20,
-                  tooltip: "复制到剪贴板",
-                  onPressed: () {
-                    onCopy();
-                    MessageUtil.show(context, "$label已复制");
-                  },
-                ),
-            ],
-          ),
+              validator: isMandatory
+                  ? (v) => (v == null || v.isEmpty) ? "必填项" : null
+                  : null,
+            ),
         ],
       ),
     );
@@ -867,6 +965,99 @@ class _AccountListPageState extends State<AccountListPage> {
           ),
         ],
       ),
+    );
+  }
+
+  // 构建密码切换行
+  Widget _buildEditablePasswordRow(Account acc) {
+    bool isVisible = _visiblePasswordIds.contains(acc.id);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("密码", style: TextStyle(color: Colors.grey, fontSize: 11)),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Expanded(
+                child: _isEditing
+                    ? TextFormField(
+                        controller: _pswdController,
+                        // 当眼睛闭着时，输入框也应该是遮蔽状态
+                        obscureText: !isVisible,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontFamily: 'Consolas',
+                        ),
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(vertical: 8),
+                        ),
+                      )
+                    : Text(
+                        isVisible ? _pswdController.text : "••••••••",
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          fontFamily: 'Consolas',
+                        ),
+                      ),
+              ),
+              // 眼睛图标无论是否处于编辑模式都应允许切换可见性
+              IconButton(
+                icon: Icon(
+                  isVisible ? Icons.visibility : Icons.visibility_off,
+                  size: 18,
+                ),
+                onPressed: () {
+                  setState(() {
+                    if (isVisible) {
+                      _visiblePasswordIds.remove(acc.id);
+                    } else {
+                      _visiblePasswordIds.add(acc.id);
+                    }
+                  });
+                },
+              ),
+              // 根据_isEditing状态切换组件
+              if (!_isEditing) // 复制按钮仅在非编辑模式下显示
+                IconButton(
+                  icon: const Icon(
+                    Icons.copy_all_rounded,
+                    size: 18,
+                    color: Colors.blueGrey,
+                  ),
+                  onPressed: () {
+                    Clipboard.setData(
+                      ClipboardData(text: _pswdController.text),
+                    );
+                    MessageUtil.show(context, "密码已复制");
+                  },
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 构建可编辑url展示行
+  Widget _buildEditableUrlRow() {
+    if (!_isEditing) return _buildInfoRowWithLink("网址", _urlController.text);
+    return _buildEditableInfoRow("网址", _urlController);
+  }
+
+  // 构建实名标记行
+  Widget _buildEditableRealNameRow() {
+    if (!_isEditing) {
+      return _buildInfoRow("实名标记", _currentRealName ? "已实名" : "未实名");
+    }
+    return CheckboxListTile(
+      title: const Text("实名标记", style: TextStyle(fontSize: 14)),
+      value: _currentRealName,
+      contentPadding: EdgeInsets.zero,
+      onChanged: (v) => setState(() => _currentRealName = v ?? false),
     );
   }
 
@@ -1147,171 +1338,6 @@ class _AccountListPageState extends State<AccountListPage> {
             child: const Text("复制恢复密钥"),
           ),
         ],
-      ),
-    );
-  }
-
-  // 弹出修改账户对话框
-  void _showEditAccountDialog(Account account) {
-    final formKey = GlobalKey<FormState>();
-
-    // 使用现有账户的数据初始化变量
-    String platform = account.platform;
-    String url = account.url;
-    int status = account.status;
-    String name = account.name;
-    String userId = account.userId;
-    String email = account.email;
-    String pswd = account.pswd;
-    String phone = account.phone;
-    String birth = account.birth ?? '';
-    String notes = account.notes ?? '';
-    String signupDate = account.signupDate;
-    String tagsStr = account.tags.join(',');
-    bool realName = account.realName;
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text("修改账户: ${account.platform}"),
-          content: SizedBox(
-            width: 500,
-            child: Form(
-              key: formKey,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextFormField(
-                      initialValue: platform, // 设置初始值
-                      decoration: const InputDecoration(
-                        labelText: "平台名称 (必填) *",
-                      ),
-                      validator: (v) =>
-                          (v == null || v.isEmpty) ? "请输入平台名称" : null,
-                      onChanged: (v) => platform = v,
-                    ),
-                    TextFormField(
-                      initialValue: name, // 设置初始值
-                      decoration: const InputDecoration(
-                        labelText: "用户昵称 (必填) *",
-                      ),
-                      validator: (v) =>
-                          (v == null || v.isEmpty) ? "请输入用户昵称" : null,
-                      onChanged: (v) => name = v,
-                    ),
-                    const Divider(height: 32),
-                    TextFormField(
-                      initialValue: url,
-                      decoration: const InputDecoration(labelText: "网址"),
-                      onChanged: (v) => url = v,
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<int>(
-                      initialValue: status,
-                      decoration: const InputDecoration(labelText: "账户状态"),
-                      items: const [
-                        DropdownMenuItem(value: 1, child: Text("使用中")),
-                        DropdownMenuItem(value: 0, child: Text("未注册")),
-                        DropdownMenuItem(value: 2, child: Text("已注销")),
-                        DropdownMenuItem(value: 3, child: Text("无法使用")),
-                      ],
-                      onChanged: (v) => setDialogState(() => status = v ?? 1),
-                    ),
-                    TextFormField(
-                      initialValue: userId,
-                      decoration: const InputDecoration(labelText: "用户ID"),
-                      onChanged: (v) => userId = v,
-                    ),
-                    TextFormField(
-                      initialValue: pswd,
-                      decoration: const InputDecoration(labelText: "密码"),
-                      onChanged: (v) => pswd = v,
-                    ),
-                    TextFormField(
-                      initialValue: phone,
-                      decoration: const InputDecoration(labelText: "绑定手机"),
-                      onChanged: (v) => phone = v,
-                    ),
-                    TextFormField(
-                      initialValue: email,
-                      decoration: const InputDecoration(labelText: "绑定邮箱"),
-                      onChanged: (v) => email = v,
-                    ),
-                    TextFormField(
-                      initialValue: birth,
-                      decoration: const InputDecoration(labelText: "预留生日"),
-                      onChanged: (v) => birth = v,
-                    ),
-                    TextFormField(
-                      initialValue: tagsStr,
-                      decoration: const InputDecoration(labelText: "标签 (逗号分隔)"),
-                      onChanged: (v) => tagsStr = v,
-                    ),
-                    TextFormField(
-                      initialValue: notes,
-                      decoration: const InputDecoration(labelText: "备注"),
-                      onChanged: (v) => notes = v,
-                    ),
-                    TextFormField(
-                      initialValue: signupDate,
-                      decoration: const InputDecoration(labelText: "注册时间"),
-                      onChanged: (v) => signupDate = v,
-                    ),
-                    CheckboxListTile(
-                      title: const Text("是否已实名"),
-                      value: realName,
-                      onChanged: (v) =>
-                          setDialogState(() => realName = v ?? false),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("取消"),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (formKey.currentState!.validate()) {
-                  // 构造更新后的 Account 对象 (保持 ID 不变)
-                  final updatedAccount = Account(
-                    id: account.id, // 关键：使用原有的 ID
-                    platform: platform,
-                    url: url,
-                    status: status,
-                    name: name,
-                    userId: userId,
-                    email: email,
-                    pswd: pswd,
-                    phone: phone,
-                    birth: birth,
-                    notes: notes,
-                    signupDate: signupDate,
-                    realName: realName,
-                    tags: tagsStr.isEmpty ? [] : tagsStr.split(','),
-                    lastModified: DateTime.now().toIso8601String(),
-                  );
-
-                  // 存入数据库 (由于 ID 相同，insertAccount 里的 replace 逻辑会覆盖旧数据)
-                  await StorageService().insertAccount(updatedAccount);
-
-                  if (!context.mounted) return;
-                  Navigator.pop(context);
-                  _refreshAccountList(); // 刷新列表
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(content: Text("修改成功！")));
-                }
-              },
-              child: const Text("保存修改"),
-            ),
-          ],
-        ),
       ),
     );
   }
