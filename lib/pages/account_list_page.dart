@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-06 15:21:51
+ * @LastEditTime: 2026-06-07 17:10:44
  * @Description: 账户信息页(查看页)
  */
 
@@ -36,6 +36,7 @@ class _AccountListPageState extends State<AccountListPage> {
   // 查找方法定义与数据结构
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode(); // 用于 Ctrl+F 聚焦
+  final Set<String> _visiblePasswordIds = {}; // 存储已开启可见性的账户ID
 
   List<Account> _allAccounts = []; // 完整的数据库副本
   List<Account> _displayAccounts = []; // 经过过滤后显示在界面上的列表
@@ -48,7 +49,7 @@ class _AccountListPageState extends State<AccountListPage> {
     _refreshAccountList();
   }
 
-  // 检查数据库库状态
+  // 检查数据库状态
   Future<void> _checkDbStatus() async {
     bool exists = await StorageService().isDatabaseExists();
     setState(() {
@@ -165,9 +166,7 @@ class _AccountListPageState extends State<AccountListPage> {
 
   @override
   Widget build(BuildContext context) {
-    // 定义侧栏宽度
-    const double panelWidth = 400;
-
+    const double panelWidth = 400; // 定义侧栏宽度
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
@@ -183,20 +182,26 @@ class _AccountListPageState extends State<AccountListPage> {
         ),
         body: Stack(
           children: [
-            // 1. 底层列表（永远可见）
+            // 底层列表（永远可见）
             Column(
               children: [
                 _buildSearchBox(),
                 Expanded(
-                  child: _allAccounts.isEmpty
-                      ? _buildEmptyStateUI() // 调用新的空状态 UI
-                      : _buildAccountTable(),
+                  child: (!_isDbCreated || _allAccounts.isEmpty)
+                      ? _buildEmptyStateUI() // 当且仅当未建库/内容为空时显示引导
+                      : ListView.builder(
+                          itemCount: _displayAccounts.length,
+                          itemBuilder: (context, index) {
+                            return _buildAccountCard(
+                              _displayAccounts[index],
+                              index,
+                            );
+                          },
+                        ),
                 ),
               ],
             ),
-
-            // 2. 动画遮罩层
-            // 使用 IgnorePointer 确保遮罩消失时不会拦截点击事件
+            // 动画遮罩层 使用IgnorePointer确保遮罩消失时不会拦截点击事件
             IgnorePointer(
               ignoring: !_isPanelOpen,
               child: AnimatedOpacity(
@@ -208,11 +213,10 @@ class _AccountListPageState extends State<AccountListPage> {
                 ),
               ),
             ),
-
-            // 3. 动画滑动面板
+            // 动画滑动面板
             AnimatedPositioned(
               duration: const Duration(milliseconds: 350),
-              curve: Curves.fastOutSlowIn, // 使用 M3 标准的强调曲线，更有质感
+              curve: Curves.fastOutSlowIn, // 使用M3标准的强调曲线，更有质感
               right: _isPanelOpen ? 0 : -panelWidth, // 展开时在右边缘，关闭时藏在屏幕外
               top: 0,
               bottom: 0,
@@ -243,6 +247,7 @@ class _AccountListPageState extends State<AccountListPage> {
     );
   }
 
+  // 构建空库UI界面
   Widget _buildEmptyStateUI() {
     return Center(
       child: Column(
@@ -294,6 +299,7 @@ class _AccountListPageState extends State<AccountListPage> {
     );
   }
 
+  // 构建搜索栏
   Widget _buildSearchBox() {
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -302,7 +308,7 @@ class _AccountListPageState extends State<AccountListPage> {
         focusNode: _searchFocusNode, // 绑定焦点
         onChanged: (value) => _filterAccounts(value), // 输入变化时即时过滤
         decoration: InputDecoration(
-          hintText: "搜索账户 (Ctrl + F)",
+          hintText: "搜索账户",
           prefixIcon: const Icon(Icons.search),
           // 增加清除按钮
           suffixIcon: _searchController.text.isNotEmpty
@@ -320,182 +326,439 @@ class _AccountListPageState extends State<AccountListPage> {
     );
   }
 
-  Widget _buildAccountTable() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final double availableWidth =
-            constraints.maxWidth - 48; // 减去 DataTable 的 24*2 边距
-        final double col1 = availableWidth * 0.2;
-        final double col2 = availableWidth * 0.1;
-        final double col3 = availableWidth * 0.3;
-        final double col4 = availableWidth * 0.4; // 标签列可以稍微宽一点
+  // 构建标题栏(条目属性)
+  // Widget _buildAccountTable() {
+  //   return LayoutBuilder(
+  //     builder: (context, constraints) {
+  //       final double availableWidth =
+  //           constraints.maxWidth - 48; // 减去 DataTable 的 24*2 边距
+  //       final double col1 = availableWidth * 0.2;
+  //       final double col2 = availableWidth * 0.1;
+  //       final double col3 = availableWidth * 0.3;
+  //       final double col4 = availableWidth * 0.4; // 标签列可以稍微宽一点
+  //       return Column(
+  //         children: [
+  //           // 固定表头
+  //           Container(
+  //             height: 56,
+  //             decoration: BoxDecoration(
+  //               color: Theme.of(context).colorScheme.surface,
+  //               border: Border(
+  //                 bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+  //               ),
+  //             ),
+  //             child: Row(
+  //               children: [
+  //                 const SizedBox(
+  //                   width: 24,
+  //                 ), // 关键：匹配 DataTable 的 horizontalMargin
+  //                 SizedBox(
+  //                   width: col1,
+  //                   child: const Text(
+  //                     '平台',
+  //                     style: TextStyle(fontWeight: FontWeight.w500),
+  //                   ),
+  //                 ),
+  //                 SizedBox(
+  //                   width: col2,
+  //                   child: const Text(
+  //                     '状态',
+  //                     style: TextStyle(fontWeight: FontWeight.w500),
+  //                   ),
+  //                 ),
+  //                 SizedBox(
+  //                   width: col3,
+  //                   child: const Text(
+  //                     '用户昵称',
+  //                     style: TextStyle(fontWeight: FontWeight.w500),
+  //                   ),
+  //                 ),
+  //                 SizedBox(
+  //                   width: col4,
+  //                   child: const Text(
+  //                     '标签',
+  //                     style: TextStyle(fontWeight: FontWeight.w500),
+  //                   ),
+  //                 ),
+  //                 const SizedBox(width: 24), // 尾部边距对齐
+  //               ],
+  //             ),
+  //           ),
+  //           // 滚动内容
+  //           Expanded(
+  //             child: SingleChildScrollView(
+  //               child: ConstrainedBox(
+  //                 constraints: BoxConstraints(minWidth: constraints.maxWidth),
+  //                 child: DataTable(
+  //                   horizontalMargin: 24, // 显式设定边距为 24
+  //                   headingRowHeight: 0,
+  //                   showCheckboxColumn: false,
+  //                   columnSpacing: 0, // 将列间距设为0，完全依靠 SizedBox 控制宽度
+  //                   columns: [
+  //                     DataColumn(label: SizedBox(width: col1)),
+  //                     DataColumn(label: SizedBox(width: col2)),
+  //                     DataColumn(label: SizedBox(width: col3)),
+  //                     DataColumn(label: SizedBox(width: col4)),
+  //                   ],
+  //                   rows: List<DataRow>.generate(_displayAccounts.length, (
+  //                     index,
+  //                   ) {
+  //                     final acc = _displayAccounts[index];
+  //                     return DataRow(
+  //                       selected: _selectedRowIndex == index,
+  //                       onSelectChanged: (selected) =>
+  //                           _onAccountSelected(index),
+  //                       cells: [
+  //                         DataCell(
+  //                           SizedBox(width: col1, child: Text(acc.platform)),
+  //                         ),
+  //                         DataCell(
+  //                           SizedBox(
+  //                             width: col2,
+  //                             child: _buildStatusChip(acc.status),
+  //                           ),
+  //                         ),
+  //                         DataCell(
+  //                           SizedBox(width: col3, child: Text(acc.name)),
+  //                         ),
+  //                         DataCell(
+  //                           SizedBox(
+  //                             width: col4,
+  //                             child: Text(
+  //                               acc.tags.isEmpty ? "-" : acc.tags.join(", "),
+  //                             ),
+  //                           ),
+  //                         ),
+  //                       ],
+  //                     );
+  //                   }),
+  //                 ),
+  //               ),
+  //             ),
+  //           ),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
 
-        return Column(
-          children: [
-            // 固定表头
-            Container(
-              height: 56,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                border: Border(
-                  bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+  // 构建详情面板的顶部区域
+  Widget _buildDetailHeader(Account account) {
+    final Color statusColor = _getStatusColor(account.status);
+    return Container(
+      padding: const EdgeInsets.all(24),
+      // 背景采用极淡的状态色，增强氛围感
+      color: statusColor.withValues(alpha: 0.05),
+      child: Row(
+        children: [
+          // 左侧大图标
+          _buildLargeLogo(account),
+          const SizedBox(width: 20),
+          // 中间标题与状态标签
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  account.platform,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              child: Row(
-                children: [
-                  const SizedBox(
-                    width: 24,
-                  ), // 关键：匹配 DataTable 的 horizontalMargin
-                  SizedBox(
-                    width: col1,
-                    child: const Text(
-                      '平台',
-                      style: TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                  SizedBox(
-                    width: col2,
-                    child: const Text(
-                      '状态',
-                      style: TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                  SizedBox(
-                    width: col3,
-                    child: const Text(
-                      '用户昵称',
-                      style: TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                  SizedBox(
-                    width: col4,
-                    child: const Text(
-                      '标签',
-                      style: TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                  const SizedBox(width: 24), // 尾部边距对齐
-                ],
-              ),
+                const SizedBox(height: 8),
+                // 调用之前定义的彩色小标签
+                _buildStatusChip(account.status),
+              ],
             ),
-
-            // 滚动内容
-            Expanded(
-              child: SingleChildScrollView(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                  child: DataTable(
-                    horizontalMargin: 24, // 显式设定边距为 24
-                    headingRowHeight: 0,
-                    showCheckboxColumn: false,
-                    columnSpacing: 0, // 将列间距设为0，完全依靠 SizedBox 控制宽度
-                    columns: [
-                      DataColumn(label: SizedBox(width: col1)),
-                      DataColumn(label: SizedBox(width: col2)),
-                      DataColumn(label: SizedBox(width: col3)),
-                      DataColumn(label: SizedBox(width: col4)),
-                    ],
-                    rows: List<DataRow>.generate(_displayAccounts.length, (
-                      index,
-                    ) {
-                      final acc = _displayAccounts[index];
-                      return DataRow(
-                        selected: _selectedRowIndex == index,
-                        onSelectChanged: (selected) =>
-                            _onAccountSelected(index),
-                        cells: [
-                          DataCell(
-                            SizedBox(width: col1, child: Text(acc.platform)),
-                          ),
-                          DataCell(
-                            SizedBox(
-                              width: col2,
-                              child: _buildStatusChip(acc.status),
-                            ),
-                          ),
-                          DataCell(
-                            SizedBox(width: col3, child: Text(acc.name)),
-                          ),
-                          DataCell(
-                            SizedBox(
-                              width: col4,
-                              child: Text(
-                                acc.tags.isEmpty ? "-" : acc.tags.join(", "),
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    }),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
+          ),
+          // 右侧关闭按钮
+          IconButton(
+            onPressed: _closePanel, // 调用State类中的关闭方法
+            icon: const Icon(Icons.close, color: Colors.grey),
+            tooltip: "关闭面板",
+          ),
+        ],
+      ),
     );
   }
 
-  // 详情面板接收Account对象而非Map
-  Widget _buildDetailPanel(Account account) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                "账户详情",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              IconButton(onPressed: _closePanel, icon: const Icon(Icons.close)),
-            ],
+  // 构建详情面板顶部的平台大图标/占位符
+  Widget _buildLargeLogo(Account account) {
+    final Color color = _getStatusColor(account.status);
+    return Container(
+      width: 64,
+      height: 64,
+      decoration: BoxDecoration(
+        // 背景色采用状态色的极浅透明版本
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.2), width: 1.5),
+      ),
+      child: Center(
+        child: Text(
+          account.platform.isNotEmpty ? account.platform[0].toUpperCase() : "?",
+          style: TextStyle(
+            color: color,
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
           ),
         ),
-        const Divider(),
+      ),
+    );
+  }
+
+  // 构建详情面板底部的操作按钮组(修改与删除)
+  Widget _buildActionButtons(Account account) {
+    return Column(
+      children: [
+        // 修改按钮：主要操作，使用Filled风格或明显的蓝色
+        ElevatedButton.icon(
+          onPressed: () => _showEditAccountDialog(account),
+          icon: const Icon(Icons.edit_rounded, size: 18),
+          label: const Text("修改条目信息"),
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 50),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        // 删除按钮：次要/危险操作，使用红色Outlined风格
+        OutlinedButton.icon(
+          onPressed: () => _confirmDelete(account),
+          icon: const Icon(
+            Icons.delete_forever_rounded,
+            color: Colors.redAccent,
+            size: 18,
+          ),
+          label: const Text("删除此条目", style: TextStyle(color: Colors.redAccent)),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 50),
+            side: const BorderSide(color: Colors.redAccent, width: 1),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16), // 底部留白，防止按钮贴地
+      ],
+    );
+  }
+
+  // 构建卡片左侧的平台小图标/占位符
+  Widget _buildSmallLogo(Account acc, Color color) {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Center(
+        child: Text(
+          acc.platform[0].toUpperCase(),
+          style: TextStyle(color: color, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  // 构建账户卡片组件
+  Widget _buildAccountCard(Account acc, int index) {
+    bool isSelected = _selectedRowIndex == index;
+    bool isPasswordVisible = _visiblePasswordIds.contains(acc.id);
+    Color statusColor = _getStatusColor(acc.status);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: InkWell(
+        onTap: () => _onAccountSelected(index),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          height: 60, // 单个条目行高
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected
+                  ? Colors.blue.withValues(alpha: 0.5)
+                  : Colors.black12,
+              width: isSelected ? 1.5 : 1,
+            ),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(11),
+            child: Row(
+              children: [
+                // 状态线
+                Container(width: 5, color: statusColor),
+                const SizedBox(width: 12),
+                // 平台Logo
+                _buildSmallLogo(acc, statusColor),
+                const SizedBox(width: 16),
+                // 平台与昵称
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        acc.platform,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        acc.name,
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ),
+                // 账号与邮箱
+                Expanded(
+                  flex: 3,
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.email_outlined,
+                        size: 14,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          acc.email.isNotEmpty ? acc.email : acc.userId,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Colors.black54,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // 右侧：密码与快捷操作
+                SizedBox(
+                  width: 200, // 固定右侧操作区宽度
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text(
+                        isPasswordVisible ? acc.pswd : "••••••••",
+                        style: TextStyle(
+                          fontFamily: 'Consolas',
+                          color: isPasswordVisible
+                              ? Colors.blue
+                              : Colors.grey[400],
+                          fontSize: 13,
+                          letterSpacing: isPasswordVisible ? 0 : 1.5,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: Icon(
+                          isPasswordVisible
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                          size: 18,
+                        ),
+                        padding: EdgeInsets.zero,
+                        onPressed: () => setState(() {
+                          isPasswordVisible
+                              ? _visiblePasswordIds.remove(acc.id)
+                              : _visiblePasswordIds.add(acc.id);
+                        }),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy_rounded, size: 18),
+                        padding: EdgeInsets.zero,
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: acc.pswd));
+                          MessageUtil.show(context, "密码已复制");
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 构建详情页面板
+  Widget _buildDetailPanel(Account account) {
+    return Column(
+      children: [
+        _buildDetailHeader(account), // 头部
+        const Divider(height: 1),
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(16),
             children: [
-              _buildInfoRow("平台名称", account.platform),
+              // 分组1: 核心凭据
               _buildInfoRow("用户昵称", account.name),
-              _buildInfoRowWithLink("网址", account.url),
-              _buildInfoRow("状态", _getStatusText(account.status)),
-              const Divider(),
-              _buildInfoRow("用户ID", account.userId),
+              _buildInfoRow("登录账号", account.userId),
               _buildInfoRow("绑定邮箱", account.email),
               _buildInfoRow("绑定手机", account.phone),
-              _buildInfoRow("密码", account.pswd),
-              _buildInfoRow("备注", account.notes ?? "无"),
+              // 详情页也加上密码显示/复制逻辑
+              _buildInfoRowWithAction(
+                "密码",
+                _visiblePasswordIds.contains(account.id)
+                    ? account.pswd
+                    : "••••••••",
+                onCopy: () =>
+                    Clipboard.setData(ClipboardData(text: account.pswd)),
+                // 切换按钮
+                action: IconButton(
+                  icon: Icon(
+                    _visiblePasswordIds.contains(account.id)
+                        ? Icons.visibility
+                        : Icons.visibility_off,
+                    size: 18,
+                    color: Colors.blueGrey,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      if (_visiblePasswordIds.contains(account.id)) {
+                        _visiblePasswordIds.remove(account.id);
+                      } else {
+                        _visiblePasswordIds.add(account.id);
+                      }
+                    });
+                  },
+                ),
+              ),
               const Divider(),
-              _buildInfoRow("标签", account.tags.join(", ")),
-              _buildInfoRow("预留生日", account.birth ?? "未填写"),
-              _buildInfoRow("注册日期", account.signupDate),
-              _buildInfoRow("实名标记", account.realName ? "是" : "否"),
-              _buildInfoRow("最后修改于", DateUtil.format(account.lastModified)),
-              const SizedBox(height: 20),
-              //*修改条目按钮
-              ElevatedButton.icon(
-                onPressed: () => _showEditAccountDialog(account),
-                icon: const Icon(Icons.edit),
-                label: const Text("修改此条目"),
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 45),
-                ),
+              // 分组2: 平台与标记
+              _buildInfoRowWithLink("网址", account.url),
+              _buildInfoRow(
+                "标签",
+                account.tags.isEmpty ? "无标签" : account.tags.join(", "),
               ),
-              //*删除条目按钮
-              OutlinedButton.icon(
-                onPressed: () => _confirmDelete(account), // 触发确认弹窗
-                icon: const Icon(Icons.delete_forever, color: Colors.red),
-                label: const Text("删除此条目", style: TextStyle(color: Colors.red)),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 45),
-                  side: const BorderSide(color: Colors.red),
-                ),
+              const Divider(),
+              // 分组3: 辅助信息
+              _buildInfoRow("生日", account.birth ?? "未填写"),
+              _buildInfoRow("实名标记", account.realName ? "已实名" : "未实名"),
+              _buildInfoRow(
+                "注册日期",
+                account.signupDate.isEmpty ? "未记录" : account.signupDate,
               ),
+              _buildInfoRow("最后修改", DateUtil.format(account.lastModified)),
+              _buildInfoRow("备注", account.notes ?? "-"),
+              const SizedBox(height: 32),
+              _buildActionButtons(account), // 按钮操作区
             ],
           ),
         ),
@@ -503,6 +766,7 @@ class _AccountListPageState extends State<AccountListPage> {
     );
   }
 
+  // 构建信息展示行
   Widget _buildInfoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -520,7 +784,69 @@ class _AccountListPageState extends State<AccountListPage> {
     );
   }
 
-  // 辅助跳转函数
+  // 构建带有操作按钮（如复制、查看）的详情展示行
+  Widget _buildInfoRowWithAction(
+    String label,
+    String value, {
+    Widget? action, // 右侧的自定义操作（如：小眼睛切换按钮）
+    VoidCallback? onCopy, // 复制按钮的回调
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 顶部小标签
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.grey,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          // 内容与按钮行
+          Row(
+            children: [
+              // 展示的文本内容
+              Expanded(
+                child: Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'Consolas', // 使用等宽字体，对齐更美观
+                  ),
+                ),
+              ),
+              // 如果传入了自定义 action (比如切换可见性的 IconButton)
+              ?action,
+              // 如果提供了 onCopy 回调，则显示复制按钮
+              if (onCopy != null)
+                IconButton(
+                  icon: const Icon(
+                    Icons.copy_all_rounded,
+                    size: 18,
+                    color: Colors.blueGrey,
+                  ),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(), // 紧凑布局
+                  splashRadius: 20,
+                  tooltip: "复制到剪贴板",
+                  onPressed: () {
+                    onCopy();
+                    MessageUtil.show(context, "$label已复制");
+                  },
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 构建带跳转功能的展示行
   Widget _buildInfoRowWithLink(String label, String url) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -578,6 +904,22 @@ class _AccountListPageState extends State<AccountListPage> {
         style: TextStyle(color: color, fontSize: 10),
       ),
     );
+  }
+
+  // 获取状态对应的颜色
+  Color _getStatusColor(int status) {
+    switch (status) {
+      case 1:
+        return Colors.green.shade400; // 使用中
+      case 0:
+        return Colors.amber.shade400; // 未注册
+      case 2:
+        return Colors.grey.shade400; // 已注销
+      case 3:
+        return Colors.red.shade400; // 无法使用
+      default:
+        return Colors.blue.shade400;
+    }
   }
 
   // 创建主密码对话框
