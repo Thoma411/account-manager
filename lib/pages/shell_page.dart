@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-08 20:56:11
+ * @LastEditTime: 2026-06-09 00:16:34
  * @Description: 主框架
  */
 
@@ -129,6 +129,7 @@ class _ShellPageState extends State<ShellPage> {
       return;
     }
     setState(() => _selectedIndex = index);
+    if (index == 0) _accountListPageKey.currentState?.requestPageFocus();
     if (index == 1) _syncPageKey.currentState?.refreshStatus(); // 刷新云同步界面
   }
 

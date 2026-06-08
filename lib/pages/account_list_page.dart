@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-08 21:57:35
+ * @LastEditTime: 2026-06-09 00:25:55
  * @Description: 账户信息页(查看页)
  */
 
@@ -35,7 +35,8 @@ class AccountListPageState extends State<AccountListPage> {
 
   // 查找方法定义与数据结构
   final TextEditingController _searchController = TextEditingController();
-  final FocusNode _searchFocusNode = FocusNode(); // TODO: 用于Ctrl+F聚焦
+  final FocusNode _searchFocusNode = FocusNode(); // 用于顶部搜索栏聚焦
+  final FocusNode _pageFocusNode = FocusNode();
   final Set<String> _visiblePasswordIds = {}; // 存储已开启可见性的账户ID
 
   List<Account> _allAccounts = []; // 完整的数据库副本
@@ -95,6 +96,7 @@ class AccountListPageState extends State<AccountListPage> {
 
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _pageFocusNode.dispose();
     super.dispose();
   }
 
@@ -160,6 +162,14 @@ class AccountListPageState extends State<AccountListPage> {
               tagsMatch;
         }).toList();
       }
+    });
+  }
+
+  // 强制令页面保底节点获取焦点以防止页面切换失焦
+  void requestPageFocus() {
+    Future.delayed(const Duration(milliseconds: 50), () {
+      if (!mounted) return;
+      FocusScope.of(context).requestFocus(_pageFocusNode);
     });
   }
 
@@ -238,82 +248,102 @@ class AccountListPageState extends State<AccountListPage> {
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
-          _searchFocusNode.requestFocus();
-        },
+          if (!_isPanelOpen) _searchFocusNode.requestFocus();
+        }, // Ctrl+F聚焦搜索框
+        const SingleActivator(LogicalKeyboardKey.escape): () {
+          if (_isPanelOpen) {
+            _closePanel();
+          } else {
+            _pageFocusNode.requestFocus();
+          }
+        }, // Esc"退出"搜索框
       },
-      child: Scaffold(
-        floatingActionButton: FloatingActionButton(
-          mini: true,
-          heroTag: "refresh_list_fab",
-          onPressed: refreshAccountList,
-          child: const Icon(Icons.refresh),
-        ),
-        body: Stack(
-          children: [
-            // 底层列表（永远可见）
-            Column(
+      child: Focus(
+        focusNode: _pageFocusNode,
+        autofocus: true,
+        canRequestFocus: true,
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent, // 确保不拦截子组件的点击
+          onTap: () {
+            if (_isPanelOpen) _closePanel();
+            _pageFocusNode.requestFocus();
+          },
+          child: Scaffold(
+            floatingActionButton: FloatingActionButton(
+              mini: true,
+              heroTag: "refresh_list_fab",
+              onPressed: refreshAccountList,
+              child: const Icon(Icons.refresh),
+            ),
+            body: Stack(
               children: [
-                _buildSearchBox(),
-                Expanded(
-                  child: (!_isDbCreated || _allAccounts.isEmpty)
-                      ? _buildEmptyStateUI() // 当且仅当未建库/内容为空时显示引导
-                      : ListView.builder(
-                          itemCount: _displayAccounts.length,
-                          itemBuilder: (context, index) {
-                            final acc = _displayAccounts[index];
-                            return _buildAccountCard(acc, index);
-                          },
-                        ),
-                ),
-              ],
-            ),
-            // 动画遮罩层 使用IgnorePointer确保遮罩消失时不会拦截点击事件
-            IgnorePointer(
-              ignoring: !_isPanelOpen,
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 300),
-                opacity: _isPanelOpen ? 1.0 : 0.0,
-                child: GestureDetector(
-                  onTap: _closePanel,
-                  child: Container(color: Colors.black.withValues(alpha: 0.3)),
-                ),
-              ),
-            ),
-            // 动画滑动面板
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 350),
-              curve: Curves.fastOutSlowIn, // 使用M3标准的强调曲线，更有质感
-              right: _isPanelOpen ? 0 : -panelWidth, // 展开时在右边缘，关闭时藏在屏幕外
-              top: 0,
-              bottom: 0,
-              width: panelWidth,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 20,
-                      offset: const Offset(-5, 0),
+                // 底层列表
+                Column(
+                  children: [
+                    _buildSearchBox(),
+                    Expanded(
+                      child: (!_isDbCreated || _allAccounts.isEmpty)
+                          ? _buildEmptyStateUI() // 当且仅当未建库/内容为空时显示引导
+                          : ListView.builder(
+                              itemCount: _displayAccounts.length,
+                              itemBuilder: (context, index) {
+                                final acc = _displayAccounts[index];
+                                return _buildAccountCard(acc, index);
+                              },
+                            ),
                     ),
                   ],
                 ),
-                // 关键：如果没选中任何行，面板内容显示为空，防止报错
-                child: (_isPanelOpen && _selectedAccountId != null)
-                    ? (() {
-                        // 逻辑：在当前显示的列表中，找那个 ID 匹配的账户对象
-                        // 这样无论它在列表的第几个位置，详情页都能精准锁定它
-                        final account = _displayAccounts.firstWhere(
-                          (acc) => acc.id == _selectedAccountId,
-                          orElse: () =>
-                              _displayAccounts.first, // 防护：万一没找到则回退到第一条
-                        );
-                        return _buildDetailPanel(account);
-                      })()
-                    : const SizedBox.shrink(),
-              ),
+                // 动画遮罩层 使用IgnorePointer确保遮罩消失时不会拦截点击事件
+                IgnorePointer(
+                  ignoring: !_isPanelOpen,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 300),
+                    opacity: _isPanelOpen ? 1.0 : 0.0,
+                    child: GestureDetector(
+                      onTap: _closePanel,
+                      child: Container(
+                        color: Colors.black.withValues(alpha: 0.3),
+                      ),
+                    ),
+                  ),
+                ),
+                // 动画滑动面板
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 350),
+                  curve: Curves.fastOutSlowIn,
+                  right: _isPanelOpen ? 0 : -panelWidth, // 展开时在右边缘，关闭时藏在屏幕外
+                  top: 0,
+                  bottom: 0,
+                  width: panelWidth,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 20,
+                          offset: const Offset(-5, 0),
+                        ),
+                      ],
+                    ),
+                    // 未选中任何行则面板内容显示为空，防止报错
+                    child: (_isPanelOpen && _selectedAccountId != null)
+                        ? (() {
+                            // 在当前显示的列表中找相应ID匹配的账户对象
+                            final account = _displayAccounts.firstWhere(
+                              (acc) => acc.id == _selectedAccountId,
+                              orElse: () =>
+                                  _displayAccounts.first, // 万一没找到则回退到第一条
+                            );
+                            return _buildDetailPanel(account);
+                          })()
+                        : const SizedBox.shrink(),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -379,8 +409,9 @@ class AccountListPageState extends State<AccountListPage> {
         controller: _searchController, // 绑定控制器
         focusNode: _searchFocusNode, // 绑定焦点
         onChanged: (value) => _filterAccounts(value), // 输入变化时即时过滤
+        onSubmitted: (value) => _pageFocusNode.requestFocus(), // 将焦点归还页面
         decoration: InputDecoration(
-          hintText: "搜索账户",
+          hintText: "搜索账户 (Ctrl+F)",
           prefixIcon: const Icon(Icons.search),
           // 增加清除按钮
           suffixIcon: _searchController.text.isNotEmpty
