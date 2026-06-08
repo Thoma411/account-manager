@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-06 17:46:03
+ * @LastEditTime: 2026-06-08 19:19:21
  * @Description: 主框架
  */
 
@@ -32,6 +32,8 @@ class ShellPage extends StatefulWidget {
 class _ShellPageState extends State<ShellPage> {
   int _selectedIndex = 0;
 
+  final GlobalKey<AccountListPageState> _accountListPageKey =
+      GlobalKey<AccountListPageState>();
   final GlobalKey<SyncPageState> _syncPageKey = GlobalKey<SyncPageState>();
   final GlobalKey<SettingsPageState> _settingsPageKey =
       GlobalKey<SettingsPageState>();
@@ -42,7 +44,7 @@ class _ShellPageState extends State<ShellPage> {
   void initState() {
     super.initState();
     _pages = [
-      const AccountListPage(), // index0
+      AccountListPage(key: _accountListPageKey), // index0
       SyncPage(key: _syncPageKey), // index1
       SettingsPage(key: _settingsPageKey), // index2
     ];
@@ -276,12 +278,12 @@ class _ShellPageState extends State<ShellPage> {
                         tags: tagsStr.isEmpty ? [] : tagsStr.split(','),
                         lastModified: DateTime.now().toIso8601String(),
                       );
-
                       await StorageService().insertAccount(newAccount);
                       if (!context.mounted) return;
                       Navigator.pop(context);
+                      _accountListPageKey.currentState?.refreshAccountList();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("账户添加成功！请刷新列表")),
+                        const SnackBar(content: Text("账户添加成功")),
                       );
                     }
                   },

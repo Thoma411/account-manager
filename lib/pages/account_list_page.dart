@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-07 22:43:40
+ * @LastEditTime: 2026-06-08 19:11:57
  * @Description: 账户信息页(查看页)
  */
 
@@ -23,10 +23,10 @@ class AccountListPage extends StatefulWidget {
   const AccountListPage({super.key});
 
   @override
-  State<AccountListPage> createState() => _AccountListPageState();
+  State<AccountListPage> createState() => AccountListPageState();
 }
 
-class _AccountListPageState extends State<AccountListPage> {
+class AccountListPageState extends State<AccountListPage> {
   bool _isDbCreated = true; // 检测本地数据库是否存在
 
   // 数据源由Map改为Account对象列表
@@ -75,7 +75,7 @@ class _AccountListPageState extends State<AccountListPage> {
     _signupDateController = TextEditingController();
     _tagsController = TextEditingController();
     _checkDbStatus();
-    _refreshAccountList();
+    refreshAccountList();
   }
 
   // 释放资源防止内存泄露
@@ -107,7 +107,7 @@ class _AccountListPageState extends State<AccountListPage> {
   }
 
   // 刷新列表
-  Future<void> _refreshAccountList() async {
+  Future<void> refreshAccountList() async {
     // 先判断库是否存在，不存在直接返回空列表
     bool exists = await StorageService().isDatabaseExists();
     if (!exists) {
@@ -186,7 +186,7 @@ class _AccountListPageState extends State<AccountListPage> {
                   _selectedAccountId = null;
                   _isPanelOpen = false; // 关闭面板
                 });
-                _refreshAccountList(); // 刷新列表
+                refreshAccountList(); // 刷新列表
                 ScaffoldMessenger.of(
                   context,
                 ).showSnackBar(const SnackBar(content: Text("条目已成功删除")));
@@ -245,7 +245,7 @@ class _AccountListPageState extends State<AccountListPage> {
         floatingActionButton: FloatingActionButton(
           mini: true,
           heroTag: "refresh_list_fab",
-          onPressed: _refreshAccountList,
+          onPressed: refreshAccountList,
           child: const Icon(Icons.refresh),
         ),
         body: Stack(
@@ -635,7 +635,7 @@ class _AccountListPageState extends State<AccountListPage> {
           lastModified: DateTime.now().toIso8601String(),
         );
         await StorageService().insertAccount(updated);
-        await _refreshAccountList();
+        await refreshAccountList();
         if (mounted) MessageUtil.show(context, "修改已保存");
         setState(() => _isEditing = false);
       }
@@ -1339,7 +1339,7 @@ class _AccountListPageState extends State<AccountListPage> {
               Navigator.pop(context);
               // 成功后刷新状态
               await _checkDbStatus();
-              await _refreshAccountList();
+              await refreshAccountList();
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text("恢复密钥已复制至剪切板，保险箱已就绪")),
