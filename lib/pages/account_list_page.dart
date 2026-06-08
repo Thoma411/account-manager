@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-08 19:11:57
+ * @LastEditTime: 2026-06-08 21:57:35
  * @Description: 账户信息页(查看页)
  */
 
@@ -614,7 +614,29 @@ class AccountListPageState extends State<AccountListPage> {
     if (_isEditing) {
       // 执行保存逻辑
       if (_formKey.currentState!.validate()) {
+        // 获取编辑对象
         final acc = _allAccounts.firstWhere((a) => a.id == _selectedAccountId);
+        // 脏检查
+        bool hasChanged =
+            _platformController.text != acc.platform ||
+            _nameController.text != acc.name ||
+            _urlController.text != acc.url ||
+            _userIdController.text != acc.userId ||
+            _emailController.text != acc.email ||
+            _pswdController.text != acc.pswd ||
+            _phoneController.text != acc.phone ||
+            _birthController.text != (acc.birth ?? "") ||
+            _notesController.text != (acc.notes ?? "") ||
+            _signupDateController.text != acc.signupDate ||
+            _currentStatus != acc.status ||
+            _currentRealName != acc.realName ||
+            _tagsController.text != acc.tags.join(',');
+        if (!hasChanged) {
+          setState(() => _isEditing = false);
+          debugPrint("account changed flag: $hasChanged");
+          return;
+        }
+        // 有变动 执行更新
         final updated = Account(
           id: acc.id, // 保持ID
           platform: _platformController.text,
@@ -636,7 +658,8 @@ class AccountListPageState extends State<AccountListPage> {
         );
         await StorageService().insertAccount(updated);
         await refreshAccountList();
-        if (mounted) MessageUtil.show(context, "修改已保存");
+        if (!mounted) return;
+        MessageUtil.show(context, "修改已保存");
         setState(() => _isEditing = false);
       }
     } else {
