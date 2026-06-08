@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-08 19:19:21
+ * @LastEditTime: 2026-06-08 20:56:11
  * @Description: 主框架
  */
 
@@ -46,7 +46,11 @@ class _ShellPageState extends State<ShellPage> {
     _pages = [
       AccountListPage(key: _accountListPageKey), // index0
       SyncPage(key: _syncPageKey), // index1
-      SettingsPage(key: _settingsPageKey), // index2
+      SettingsPage(
+        key: _settingsPageKey,
+        onDataChanged: () =>
+            _accountListPageKey.currentState?.refreshAccountList(),
+      ), // index2
     ];
   }
 
@@ -282,9 +286,9 @@ class _ShellPageState extends State<ShellPage> {
                       if (!context.mounted) return;
                       Navigator.pop(context);
                       _accountListPageKey.currentState?.refreshAccountList();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("账户添加成功")),
-                      );
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(const SnackBar(content: Text("账户添加成功")));
                     }
                   },
                   child: const Text("保存"),
@@ -317,7 +321,8 @@ class _ShellPageState extends State<ShellPage> {
 
 // 设置界面
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
+  final VoidCallback? onDataChanged;
+  const SettingsPage({super.key, this.onDataChanged});
 
   @override
   State<SettingsPage> createState() => SettingsPageState();
@@ -768,6 +773,7 @@ class SettingsPageState extends State<SettingsPage> {
             int count = await CsvService().pickAndImportCsv();
             if (!context.mounted) return;
             if (count > 0) {
+              widget.onDataChanged?.call();
               MessageUtil.show(context, "成功导入 $count 条数据！");
             }
           },
