@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-09 21:11:57
+ * @LastEditTime: 2026-06-09 21:41:22
  * @Description: 账户信息页(查看页)
  */
 
@@ -962,9 +962,17 @@ class AccountListPageState extends State<AccountListPage> {
                 _buildEditableInfoRow("标签 (逗号分隔)", _tagsController),
                 const Divider(),
                 // 分组3: 辅助信息
-                _buildEditableInfoRow("生日", _birthController),
+                _buildEditableInfoRow(
+                  "生日",
+                  _birthController,
+                  isDateField: true,
+                ),
                 _buildEditableRealNameRow(), // 实名勾选/展示
-                _buildEditableInfoRow("注册日期", _signupDateController),
+                _buildEditableInfoRow(
+                  "注册日期",
+                  _signupDateController,
+                  isDateField: true,
+                ),
                 _buildEditableInfoRow("备注", _notesController, maxLines: 5),
                 _buildInfoRow("最后修改于", DateUtil.format(account.lastModified)),
                 const SizedBox(height: 32),
@@ -1020,6 +1028,7 @@ class AccountListPageState extends State<AccountListPage> {
     TextEditingController controller, {
     bool isMandatory = false,
     bool isPassword = false,
+    bool isDateField = false,
     int maxLines = 1,
   }) {
     final bool isMasked =
@@ -1056,13 +1065,24 @@ class AccountListPageState extends State<AccountListPage> {
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   isDense: true,
                   contentPadding: EdgeInsets.zero, // 彻底消除内边距
                   border: InputBorder.none, // 编辑时也隐藏下划线，保持清爽
                   focusedBorder: UnderlineInputBorder(
                     borderSide: BorderSide(color: Colors.blue, width: 1),
                   ), // 仅在聚焦时显示下划线
+                  suffixIcon: isDateField
+                      ? IconButton(
+                          icon: Icon(
+                            Icons.calendar_today,
+                            size: 16,
+                            color: Colors.blue,
+                          ),
+                          onPressed: () => _pickDate(context, controller),
+                          padding: EdgeInsets.zero,
+                        )
+                      : null,
                 ),
               ),
             ),
@@ -1238,6 +1258,33 @@ class AccountListPageState extends State<AccountListPage> {
         return Colors.red.shade400; // 无法使用
       default:
         return Colors.blue.shade400;
+    }
+  }
+
+  // 日历选择器
+  Future<void> _pickDate(
+    BuildContext context,
+    TextEditingController controller,
+  ) async {
+    // 尝试解析当前输入框的时间，失败则用当前时间
+    DateTime initialDate = DateTime.tryParse(controller.text) ?? DateTime.now();
+    // 调用官方日期选择器
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(1900), // 最早可选
+      lastDate: DateTime(2100), // 最晚可选
+      helpText: '选择日期',
+      cancelText: '取消',
+      confirmText: '确定',
+    );
+    // 如果用户选了日期且组件还挂载着
+    if (picked != null && mounted) {
+      setState(() {
+        // 格式化为yyyy-MM-dd
+        controller.text =
+            "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
+      });
     }
   }
 
