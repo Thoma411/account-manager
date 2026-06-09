@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-09 17:40:05
+ * @LastEditTime: 2026-06-09 18:32:27
  * @Description: 主框架
  */
 
@@ -757,6 +757,39 @@ class SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  // 登出保险箱
+  void _handleLogout() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("退出登录"),
+        content: const Text("确认退出保险箱吗？"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("取消"),
+          ),
+          TextButton(
+            onPressed: () async {
+              SecurityService().clearKeys(); // 清空内存中的DK
+              await StorageService().closeDatabase(); // 关闭db连接并重置句柄
+              if (!context.mounted) return;
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const UnlockPage()),
+                (route) => false, // 不允许返回
+              ); // 踢回解锁页并销毁当前所有UI栈
+              MessageUtil.show(context, "保险箱已锁定");
+            },
+            child: const Text(
+              "确认退出",
+              style: TextStyle(color: Colors.redAccent),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListView(
@@ -852,6 +885,38 @@ class SettingsPageState extends State<SettingsPage> {
           title: Text("关于项目"),
           subtitle: Text("accountManager v1.0.0-Beta"),
           leading: Icon(Icons.info_outline),
+        ),
+
+        const SizedBox(height: 20),
+        Center(
+          child: SizedBox(
+            width: 350,
+            height: 50,
+            child: OutlinedButton.icon(
+              onPressed: _handleLogout,
+              icon: const Icon(
+                Icons.logout_rounded,
+                color: Colors.redAccent,
+                size: 20,
+              ),
+              label: const Text(
+                "退出登录并锁定保险箱",
+                style: TextStyle(
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                side: const BorderSide(color: Colors.redAccent, width: 1.5),
+                foregroundColor: Colors.redAccent,
+              ),
+            ),
+          ),
+          // const SizedBox(height: 40),
         ),
       ],
     );
