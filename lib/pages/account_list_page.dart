@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-09 17:35:35
+ * @LastEditTime: 2026-06-09 21:11:57
  * @Description: 账户信息页(查看页)
  */
 
@@ -12,9 +12,10 @@ import 'package:flutter/services.dart';
 import 'package:webdav_client/webdav_client.dart' as dav;
 import 'package:url_launcher/url_launcher.dart';
 
-import '../models/account.dart'; // 导入模型
-import '../services/storage_service.dart'; // 导入存储服务
-import '../services/security_service.dart'; // 导入安全服务
+import '../models/account.dart';
+import '../services/storage_service.dart';
+import '../services/settings_service.dart';
+import '../services/security_service.dart';
 import '../services/webdav_service.dart';
 import '../pages/login_page.dart';
 import '../utils/utils.dart';
@@ -28,6 +29,7 @@ class AccountListPage extends StatefulWidget {
 
 class AccountListPageState extends State<AccountListPage> {
   bool _isDbCreated = true; // 检测本地数据库是否存在
+  final _settings = SettingsService();
 
   // 数据源由Map改为Account对象列表
   String? _selectedAccountId;
@@ -42,7 +44,11 @@ class AccountListPageState extends State<AccountListPage> {
   List<Account> _allAccounts = []; // 完整的数据库副本
   List<Account> _displayAccounts = []; // 经过过滤后显示在界面上的列表
 
-  bool _isEditing = false;
+  // 排序依据
+  String _sortBy = 'platform'; // platform/last_modified
+  bool _isAscending = true; // 默认升序
+
+  bool _isEditing = false; // 是否正在编辑
   final _formKey = GlobalKey<FormState>();
 
   // 详情页字段控制器
@@ -64,6 +70,7 @@ class AccountListPageState extends State<AccountListPage> {
   @override
   void initState() {
     super.initState();
+    // 控制器
     _platformController = TextEditingController();
     _nameController = TextEditingController();
     _urlController = TextEditingController();
@@ -75,6 +82,11 @@ class AccountListPageState extends State<AccountListPage> {
     _notesController = TextEditingController();
     _signupDateController = TextEditingController();
     _tagsController = TextEditingController();
+    // 排序依据
+    _sortBy = _settings.get('sort_by', defaultValue: 'platform')!;
+    _isAscending =
+        _settings.get('sort_ascending', defaultValue: 'true') == 'true';
+
     _checkDbStatus();
     refreshAccountList();
   }
@@ -131,30 +143,23 @@ class AccountListPageState extends State<AccountListPage> {
   // 核心过滤逻辑
   void _filterAccounts(String query) {
     setState(() {
+      List<Account> results = [];
       if (query.isEmpty) {
-        _displayAccounts = _allAccounts; // 如果搜索框为空,显示全部
+        results = List.from(_allAccounts);
       } else {
-        final lowercaseQuery = query.toLowerCase(); // 提前转小写,优化性能
-
-        _displayAccounts = _allAccounts.where((acc) {
-          // 1. 基础必填字段匹配
+        final lowercaseQuery = query.toLowerCase();
+        results = _allAccounts.where((acc) {
           final platformMatch = acc.platform.toLowerCase().contains(
             lowercaseQuery,
           );
           final nameMatch = acc.name.toLowerCase().contains(lowercaseQuery);
           final userIdMatch = acc.userId.toLowerCase().contains(lowercaseQuery);
-
-          // 2. 备注类字段匹配（使用 ?? '' 处理 null 值）
           final notesMatch = (acc.notes ?? "").toLowerCase().contains(
             lowercaseQuery,
           );
-
-          // 3. 标签匹配
           final tagsMatch = acc.tags.any(
             (tag) => tag.toLowerCase().contains(lowercaseQuery),
           );
-
-          // 返回以上任一条件满足的结果
           return platformMatch ||
               nameMatch ||
               userIdMatch ||
@@ -162,6 +167,17 @@ class AccountListPageState extends State<AccountListPage> {
               tagsMatch;
         }).toList();
       }
+      // 排序
+      results.sort((a, b) {
+        int cmp;
+        if (_sortBy == 'platform') {
+          cmp = a.platform.toLowerCase().compareTo(b.platform.toLowerCase());
+        } else {
+          cmp = a.lastModified.compareTo(b.lastModified); // 按最后修改时间排序
+        }
+        return _isAscending ? cmp : -cmp;
+      });
+      _displayAccounts = results;
     });
   }
 
@@ -274,7 +290,13 @@ class AccountListPageState extends State<AccountListPage> {
                 // 底层列表
                 Column(
                   children: [
-                    _buildSearchBox(),
+                    Row(
+                      children: [
+                        Expanded(child: _buildSearchBox()),
+                        _buildSortButton(), // 新增排序按钮函数
+                        const SizedBox(width: 16),
+                      ],
+                    ),
                     Expanded(
                       child: (!_isDbCreated || _allAccounts.isEmpty)
                           ? _buildEmptyStateUI() // 当且仅当未建库/内容为空时显示引导
@@ -420,6 +442,53 @@ class AccountListPageState extends State<AccountListPage> {
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
+    );
+  }
+
+  // 构建排序选择按钮
+  Widget _buildSortButton() {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.sort_rounded, color: Colors.blueGrey),
+      tooltip: "排序依据",
+      onSelected: (value) async {
+        setState(() {
+          if (value == 'toggle_order') {
+            _isAscending = !_isAscending;
+          } else {
+            _sortBy = value;
+          }
+        });
+        // 持久化保存偏好
+        await _settings.set('sort_by', _sortBy);
+        await _settings.set('sort_ascending', _isAscending.toString());
+        _filterAccounts(_searchController.text);
+      },
+      itemBuilder: (context) => [
+        CheckedPopupMenuItem(
+          value: 'platform',
+          checked: _sortBy == 'platform',
+          child: const Text("按平台名称"),
+        ),
+        CheckedPopupMenuItem(
+          value: 'last_modified',
+          checked: _sortBy == 'last_modified',
+          child: const Text("按修改时间"),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: 'toggle_order',
+          child: Row(
+            children: [
+              Icon(
+                _isAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Text(_isAscending ? "当前：升序" : "当前：降序"),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
