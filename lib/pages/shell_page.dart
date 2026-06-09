@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-09 18:32:27
+ * @LastEditTime: 2026-06-09 22:48:46
  * @Description: 主框架
  */
 
@@ -11,6 +11,7 @@ import 'package:accountmanager/pages/login_page.dart';
 import 'package:accountmanager/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import 'account_list_page.dart';
@@ -176,12 +177,13 @@ class _ShellPageState extends State<ShellPage> {
         email = '',
         pswd = '',
         phone = '',
-        birth = '',
         notes = '',
-        signupDate = DateTime.now().toString().split(' ')[0],
         tagsStr = '';
     int status = 1; // 默认使用中
     bool realName = false;
+
+    final birthController = TextEditingController();
+    final signupController = TextEditingController();
 
     showDialog(
       context: context,
@@ -250,8 +252,26 @@ class _ShellPageState extends State<ShellPage> {
                           onChanged: (v) => email = v,
                         ),
                         TextFormField(
-                          decoration: const InputDecoration(labelText: "预留生日"),
-                          onChanged: (v) => birth = v,
+                          controller: birthController,
+                          decoration: InputDecoration(
+                            labelText: "生日",
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.calendar_today, size: 16),
+                              onPressed: () async {
+                                final date = await showDatePicker(
+                                  context: context,
+                                  initialDate: DateTime.now(),
+                                  firstDate: DateTime(1900),
+                                  lastDate: DateTime(2100),
+                                );
+                                if (date != null) {
+                                  birthController.text = DateFormat(
+                                    'yyyy-MM-dd',
+                                  ).format(date);
+                                }
+                              },
+                            ),
+                          ),
                         ),
                         TextFormField(
                           decoration: const InputDecoration(
@@ -263,9 +283,28 @@ class _ShellPageState extends State<ShellPage> {
                           decoration: const InputDecoration(labelText: "备注"),
                           onChanged: (v) => notes = v,
                         ),
+                        const SizedBox(height: 12),
                         TextFormField(
-                          decoration: const InputDecoration(labelText: "注册时间"),
-                          onChanged: (v) => signupDate = v,
+                          controller: signupController,
+                          decoration: InputDecoration(
+                            labelText: "注册日期",
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.calendar_today, size: 16),
+                              onPressed: () async {
+                                final date = await showDatePicker(
+                                  context: context,
+                                  initialDate: DateTime.now(),
+                                  firstDate: DateTime(1900),
+                                  lastDate: DateTime(2100),
+                                );
+                                if (date != null) {
+                                  signupController.text = DateFormat(
+                                    'yyyy-MM-dd',
+                                  ).format(date);
+                                }
+                              },
+                            ),
+                          ),
                         ),
                         // 实名勾选框，使用 setDialogState 刷新
                         CheckboxListTile(
@@ -300,9 +339,13 @@ class _ShellPageState extends State<ShellPage> {
                         email: email,
                         pswd: pswd,
                         phone: phone,
-                        birth: birth,
+                        birth: birthController.text.trim().isEmpty
+                            ? null
+                            : DateTime.tryParse(birthController.text),
                         notes: notes,
-                        signupDate: signupDate,
+                        signupDate: signupController.text.trim().isEmpty
+                            ? null
+                            : DateTime.tryParse(signupController.text),
                         realName: realName,
                         tags: tagsStr.isEmpty ? [] : tagsStr.split(','),
                         lastModified: DateTime.now().toIso8601String(),

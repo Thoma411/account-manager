@@ -1,12 +1,13 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 21:55:09
- * @LastEditTime: 2026-06-06 17:35:04
+ * @LastEditTime: 2026-06-09 23:20:36
  * @Description: 13字段实体定义
  */
 
 import 'dart:convert';
 import 'package:uuid/uuid.dart';
+import 'package:intl/intl.dart';
 
 import '../services/security_service.dart';
 
@@ -17,7 +18,7 @@ class Account {
   String url; // 2. 网址
   int status; // 3. 状态: 0未注册, 1使用中, 2已注销, 3无法使用
   List<String> tags; // 4. 标签
-  String signupDate; // 5. 注册日期
+  DateTime? signupDate; // 5. 注册日期
   bool realName; // 6. 实名标记
   String lastModified; // 7. 修改时间
   // 密文字段
@@ -26,7 +27,7 @@ class Account {
   String email; // 10. 邮箱
   String pswd; // 11. 密码
   String phone; // 12. 手机
-  String? birth; // 13. 生日
+  DateTime? birth; // 13. 生日
   String? notes; // 14. 备注(合并自pf_remark&info_remark)
 
   Account({
@@ -42,7 +43,7 @@ class Account {
     required this.phone,
     this.birth,
     this.notes,
-    required this.signupDate,
+    this.signupDate,
     required this.realName,
     required this.lastModified,
   });
@@ -67,10 +68,10 @@ class Account {
       'email': enc(email),
       'pswd': enc(pswd),
       'phone': enc(phone),
-      'birth': enc(birth ?? ""),
+      'birth': birth?.toIso8601String().split('T')[0],
       'notes': enc(notes ?? ""),
       // ---
-      'signup_date': signupDate,
+      'signup_date': signupDate?.toIso8601String().split('T')[0],
       'real_name': realName ? 1 : 0,
       'last_modified': lastModified,
     };
@@ -101,9 +102,13 @@ class Account {
       email: dec(map['email']),
       pswd: dec(map['pswd']),
       phone: dec(map['phone']),
-      birth: dec(map['birth']),
+      birth: (map['birth'] != null && map['birth'] != "")
+          ? DateTime.tryParse(map['birth'])
+          : null,
       notes: dec(map['notes']),
-      signupDate: map['signup_date'] ?? "",
+      signupDate: (map['signup_date'] != null && map['signup_date'] != "")
+          ? DateTime.tryParse(map['signup_date'])
+          : null,
       realName: map['real_name'] == 1,
       lastModified: map['last_modified'] ?? DateTime.now().toIso8601String(),
     );
@@ -111,6 +116,15 @@ class Account {
 
   // 从CSV行数据映射为对象
   factory Account.fromCsv(List<dynamic> row) {
+    // 尝试解析常见日期格式
+    DateTime? parseCsvDate(dynamic val) {
+      if (val == null) return null;
+      String dateStr = val.toString().trim();
+      if (dateStr.isEmpty) return null; // 空串直接返回null
+      String normalized = dateStr.replaceAll(RegExp(r'[/.]'), '-');
+      return DateTime.tryParse(normalized); // 尝试解析，失败返回null
+    }
+
     return Account(
       id: const Uuid().v4(),
       platform: row[0]?.toString() ?? "",
@@ -120,9 +134,9 @@ class Account {
       pswd: row[4]?.toString() ?? "",
       url: row[5]?.toString() ?? "",
       phone: row[6]?.toString() ?? "",
-      birth: row[7]?.toString(),
+      birth: parseCsvDate(row[7]),
       notes: row[8]?.toString(),
-      signupDate: row[9]?.toString() ?? "",
+      signupDate: parseCsvDate(row[9]),
       realName:
           row[10]?.toString() == '1' ||
           row[10]?.toString() == 'true' ||
@@ -137,6 +151,11 @@ class Account {
 
   // 转换为CSV行
   List<dynamic> toCsvRow() {
+    String formatExportDate(DateTime? dt) {
+      if (dt == null) return "";
+      return DateFormat('yyyy-MM-dd').format(dt);
+    }
+
     return [
       platform, // 0
       name, // 1
@@ -145,10 +164,10 @@ class Account {
       pswd, // 4
       url, // 5
       phone, // 6
-      birth, // 7
+      formatExportDate(birth), // 7
       notes, // 8
-      signupDate, // 9
-      realName ? '是' : '否', // 10
+      formatExportDate(signupDate), // 9
+      realName ? '1' : '0', // 10
       tags.join(','), // 11
       status, // 12
     ];

@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-09 21:41:22
+ * @LastEditTime: 2026-06-09 22:30:21
  * @Description: 账户信息页(查看页)
  */
 
@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:webdav_client/webdav_client.dart' as dav;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart';
 
 import '../models/account.dart';
 import '../services/storage_service.dart';
@@ -242,9 +243,13 @@ class AccountListPageState extends State<AccountListPage> {
       _emailController.text = acc.email;
       _pswdController.text = acc.pswd;
       _phoneController.text = acc.phone;
-      _birthController.text = acc.birth ?? "";
+      _birthController.text = acc.birth != null
+          ? DateFormat('yyyy-MM-dd').format(acc.birth!)
+          : "";
       _notesController.text = acc.notes ?? "";
-      _signupDateController.text = acc.signupDate;
+      _signupDateController.text = acc.signupDate != null
+          ? DateFormat('yyyy-MM-dd').format(acc.signupDate!)
+          : "";
       _tagsController.text = acc.tags.join(',');
       _currentStatus = acc.status;
       _currentRealName = acc.realName;
@@ -719,9 +724,15 @@ class AccountListPageState extends State<AccountListPage> {
             _emailController.text != acc.email ||
             _pswdController.text != acc.pswd ||
             _phoneController.text != acc.phone ||
-            _birthController.text != (acc.birth ?? "") ||
+            _birthController.text !=
+                (acc.birth == null
+                    ? ""
+                    : DateFormat('yyyy-MM-dd').format(acc.birth!)) ||
             _notesController.text != (acc.notes ?? "") ||
-            _signupDateController.text != acc.signupDate ||
+            _signupDateController.text !=
+                (acc.signupDate == null
+                    ? ""
+                    : DateFormat('yyyy-MM-dd').format(acc.signupDate!)) ||
             _currentStatus != acc.status ||
             _currentRealName != acc.realName ||
             _tagsController.text != acc.tags.join(',');
@@ -741,9 +752,13 @@ class AccountListPageState extends State<AccountListPage> {
           email: _emailController.text,
           pswd: _pswdController.text,
           phone: _phoneController.text,
-          birth: _birthController.text,
+          birth: _birthController.text.isEmpty
+              ? null
+              : DateTime.tryParse(_birthController.text),
           notes: _notesController.text,
-          signupDate: _signupDateController.text,
+          signupDate: _signupDateController.text.isEmpty
+              ? null
+              : DateTime.tryParse(_signupDateController.text),
           realName: _currentRealName,
           tags: _tagsController.text.trim().isEmpty
               ? []
@@ -1266,7 +1281,7 @@ class AccountListPageState extends State<AccountListPage> {
     BuildContext context,
     TextEditingController controller,
   ) async {
-    // 尝试解析当前输入框的时间，失败则用当前时间
+    // 日历初始的选中日期
     DateTime initialDate = DateTime.tryParse(controller.text) ?? DateTime.now();
     // 调用官方日期选择器
     final DateTime? picked = await showDatePicker(
