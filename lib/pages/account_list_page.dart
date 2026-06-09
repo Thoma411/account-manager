@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-09 00:25:55
+ * @LastEditTime: 2026-06-09 17:35:35
  * @Description: 账户信息页(查看页)
  */
 
@@ -269,12 +269,6 @@ class AccountListPageState extends State<AccountListPage> {
             _pageFocusNode.requestFocus();
           },
           child: Scaffold(
-            floatingActionButton: FloatingActionButton(
-              mini: true,
-              heroTag: "refresh_list_fab",
-              onPressed: refreshAccountList,
-              child: const Icon(Icons.refresh),
-            ),
             body: Stack(
               children: [
                 // 底层列表

@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-09 00:16:34
+ * @LastEditTime: 2026-06-09 17:40:05
  * @Description: 主框架
  */
 
@@ -91,15 +91,39 @@ class _ShellPageState extends State<ShellPage> {
               ),
             ],
           ),
-
           // 固定新增按钮
           Positioned(
             left: 15, // 距离左边距离
             bottom: 25, // 距离底部距离
-            child: FloatingActionButton(
-              heroTag: "add_account_fab",
-              onPressed: _showAddAccountDialog,
-              child: const Icon(Icons.add),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 仅在主页显示刷新，或者全局显示用于强制重载所有数据
+                FloatingActionButton.small(
+                  heroTag: "refresh_list_global",
+                  onPressed: () {
+                    // 分别刷新对应的状态
+                    if (_selectedIndex == 0) {
+                      _accountListPageKey.currentState?.refreshAccountList();
+                      MessageUtil.show(context, "刷新成功");
+                    } else if (_selectedIndex == 1) {
+                      _syncPageKey.currentState?.refreshStatus();
+                    }
+                  },
+                  backgroundColor: Colors.white,
+                  child: const Icon(
+                    Icons.refresh,
+                    color: Colors.blueGrey,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                FloatingActionButton(
+                  heroTag: "add_account_fab",
+                  onPressed: _showAddAccountDialog,
+                  child: const Icon(Icons.add),
+                ),
+              ],
             ),
           ),
         ],
