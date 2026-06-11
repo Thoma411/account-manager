@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-11 16:47:01
+ * @LastEditTime: 2026-06-11 17:20:22
  * @Description: 账户信息页(查看页)
  */
 
@@ -711,6 +711,13 @@ class AccountListPageState extends State<AccountListPage> {
   // 切换状态(只读/编辑)
   void _toggleEditMode() async {
     if (_isEditing) {
+      // 去除首尾空格
+      _platformController.text = _platformController.text.trim();
+      _nameController.text = _nameController.text.trim();
+      _urlController.text = _urlController.text.trim();
+      _userIdController.text = _userIdController.text.trim();
+      _emailController.text = _emailController.text.trim();
+      _phoneController.text = _phoneController.text.trim();
       // 执行保存逻辑
       if (_formKey.currentState!.validate()) {
         // 获取编辑对象

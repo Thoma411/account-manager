@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 21:55:09
- * @LastEditTime: 2026-06-09 23:20:36
+ * @LastEditTime: 2026-06-11 17:17:14
  * @Description: 13字段实体定义
  */
 
@@ -32,21 +32,26 @@ class Account {
 
   Account({
     required this.id,
-    required this.platform,
-    required this.url,
+    required String platform,
+    required String url,
     required this.status,
     this.tags = const [],
-    required this.name,
-    required this.userId,
-    required this.email,
+    required String name,
+    required String userId,
+    required String email,
     required this.pswd,
-    required this.phone,
+    required String phone,
     this.birth,
     this.notes,
     this.signupDate,
     required this.realName,
     required this.lastModified,
-  });
+  }) : platform = platform.trim(),
+       url = url.trim(),
+       name = name.trim(),
+       userId = userId.trim(),
+       email = email.trim(),
+       phone = phone.trim();
 
   // 转换为数据库存储的Map
   Map<String, dynamic> toMap() {
