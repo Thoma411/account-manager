@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-11 23:00:48
+ * @LastEditTime: 2026-06-12 00:07:54
  * @Description: 账户信息页(查看页)
  */
 
@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'package:encrypt/encrypt.dart' as enc;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:webdav_client/webdav_client.dart' as dav;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
@@ -44,6 +45,9 @@ class AccountListPageState extends State<AccountListPage> {
 
   List<Account> _allAccounts = []; // 完整的数据库副本
   List<Account> _displayAccounts = []; // 经过过滤后显示在界面上的列表
+
+  Set<String> _globalTags = {}; // 用于自动补全提示
+  List<String> _tempTags = []; // 临时标签集
 
   // 排序依据
   String _sortBy = 'platform'; // platform/last_modified
@@ -83,6 +87,10 @@ class AccountListPageState extends State<AccountListPage> {
     _notesController = TextEditingController();
     _signupDateController = TextEditingController();
     _tagsController = TextEditingController();
+    // 监听标签输入，实时显示建议
+    _tagsController.addListener(() {
+      if (_isEditing) setState(() {}); // 输入时强制重绘
+    });
     // 排序依据
     _sortBy = _settings.get('sort_by', defaultValue: 'platform')!;
     _isAscending =
@@ -129,13 +137,14 @@ class AccountListPageState extends State<AccountListPage> {
       setState(() {
         _allAccounts = [];
         _displayAccounts = [];
+        _globalTags = {};
       });
       return;
     }
-
     final data = await StorageService().getAllAccounts();
     setState(() {
       _allAccounts = data;
+      _globalTags = data.expand((acc) => acc.tags).toSet(); // tags列表展开并去重
       // 刷新时根据当前搜索框内容过滤
       _filterAccounts(_searchController.text);
     });
@@ -260,6 +269,9 @@ class AccountListPageState extends State<AccountListPage> {
       _tagsController.text = acc.tags.join(',');
       _currentStatus = acc.status;
       _currentRealName = acc.realName;
+
+      _tagsController.clear(); // 清空标签输入框
+      _tempTags = List.from(acc.tags); // 拷贝一份标签
     });
   }
 
@@ -725,6 +737,10 @@ class AccountListPageState extends State<AccountListPage> {
       _userIdController.text = _userIdController.text.trim();
       _emailController.text = _emailController.text.trim();
       _phoneController.text = _phoneController.text.trim();
+      // 自动保存标签输入框中未回车的内容
+      if (_tagsController.text.trim().isNotEmpty) {
+        _addNewTag(_tagsController.text);
+      }
       // 执行保存逻辑
       if (_formKey.currentState!.validate()) {
         // 获取编辑对象
@@ -771,7 +787,7 @@ class AccountListPageState extends State<AccountListPage> {
                     : DateFormat('yyyy-MM-dd').format(acc.signupDate!)) ||
             _currentStatus != acc.status ||
             _currentRealName != acc.realName ||
-            _tagsController.text != acc.tags.join(',');
+            !listEquals(_tempTags, acc.tags);
         if (!hasChanged) {
           setState(() => _isEditing = false);
           debugPrint("account changed flag: $hasChanged");
@@ -796,9 +812,7 @@ class AccountListPageState extends State<AccountListPage> {
               ? null
               : DateTime.tryParse(_signupDateController.text),
           realName: _currentRealName,
-          tags: _tagsController.text.trim().isEmpty
-              ? []
-              : _tagsController.text.split(','),
+          tags: _tempTags,
           lastModified: DateTime.now().toIso8601String(),
         );
         await StorageService().insertAccount(updated);
@@ -1010,7 +1024,7 @@ class AccountListPageState extends State<AccountListPage> {
                 const Divider(),
                 // 分组2: 平台与标记
                 _buildEditableUrlRow(), // 网址展示/编辑
-                _buildEditableInfoRow("标签 (逗号分隔)", _tagsController),
+                _buildEditableTagsRow(), // 标签编辑器
                 const Divider(),
                 // 分组3: 辅助信息
                 _buildEditableInfoRow(
@@ -1245,6 +1259,126 @@ class AccountListPageState extends State<AccountListPage> {
     return _isEditing
         ? _buildEditableInfoRow("网址", _urlController)
         : _buildInfoRowWithLink("网址", _urlController.text);
+  }
+
+  // 构建可编辑标签行
+  Widget _buildEditableTagsRow() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "标签 (回车切分)",
+          style: TextStyle(color: Colors.grey, fontSize: 11),
+        ),
+        const SizedBox(height: 8),
+        // 标签展示与输入区
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: _isEditing
+                ? Colors.grey.withValues(alpha: 0.05)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: _isEditing
+                ? Border.all(color: Colors.blue.withValues(alpha: 0.3))
+                : null,
+          ),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              // 已有的标签Chip
+              ..._tempTags.map(
+                (tag) => InputChip(
+                  label: Text(tag, style: const TextStyle(fontSize: 12)),
+                  shape: const StadiumBorder(),
+                  onDeleted: _isEditing
+                      ? () => setState(() => _tempTags.remove(tag))
+                      : null,
+                  onPressed: !_isEditing
+                      ? () {
+                          // 只读模式：点击标签直接搜索
+                          _searchController.text = tag;
+                          _filterAccounts(tag);
+                          _closePanel();
+                        }
+                      : null,
+                  deleteIcon: const Icon(Icons.cancel, size: 14),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+              // 编辑模式下的实时输入框
+              if (_isEditing)
+                SizedBox(
+                  width: 100,
+                  child: TextField(
+                    controller: _tagsController,
+                    autofocus: false,
+                    decoration: const InputDecoration(
+                      hintText: "新标签...",
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(vertical: 4),
+                    ),
+                    style: const TextStyle(fontSize: 13),
+                    // 回车或输入逗号/空格时触发切分
+                    onSubmitted: (val) => _addNewTag(val),
+                    onChanged: (val) {
+                      // 这里可以实现即时的下拉建议 UI
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
+        // 编辑模式下的智能建议区
+        if (_isEditing && _tagsController.text.isNotEmpty)
+          _buildTagSuggestions(),
+      ],
+    );
+  }
+
+  // 添加新标签并查重
+  void _addNewTag(String val) {
+    final cleanTag = val.trim();
+    if (cleanTag.isNotEmpty && !_tempTags.contains(cleanTag)) {
+      setState(() {
+        _tempTags.add(cleanTag);
+        _tagsController.clear();
+      });
+    }
+  }
+
+  // 辅助组件：显示智能建议
+  Widget _buildTagSuggestions() {
+    final suggestions = _globalTags
+        .where(
+          (t) =>
+              t.toLowerCase().contains(_tagsController.text.toLowerCase()) &&
+              !_tempTags.contains(t),
+        )
+        .toList();
+    if (suggestions.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Wrap(
+        spacing: 8,
+        children: suggestions
+            .take(5)
+            .map(
+              (s) => ActionChip(
+                label: Text(
+                  s,
+                  style: const TextStyle(fontSize: 11, color: Colors.blue),
+                ),
+                onPressed: () => _addNewTag(s),
+                backgroundColor: Colors.blue.withValues(alpha: 0.05),
+              ),
+            )
+            .toList(),
+      ),
+    );
   }
 
   // 构建实名标记行
