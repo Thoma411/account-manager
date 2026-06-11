@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-11 17:20:22
+ * @LastEditTime: 2026-06-11 23:00:48
  * @Description: 账户信息页(查看页)
  */
 
@@ -145,27 +145,34 @@ class AccountListPageState extends State<AccountListPage> {
   void _filterAccounts(String query) {
     setState(() {
       List<Account> results = [];
-      if (query.isEmpty) {
+      if (query.trim().isEmpty) {
         results = List.from(_allAccounts);
       } else {
-        final lowercaseQuery = query.toLowerCase();
+        final keywords = query
+            .toLowerCase()
+            .split(RegExp(r'\s+'))
+            .where((k) => k.isNotEmpty)
+            .toList();
         results = _allAccounts.where((acc) {
-          final platformMatch = acc.platform.toLowerCase().contains(
-            lowercaseQuery,
-          );
-          final nameMatch = acc.name.toLowerCase().contains(lowercaseQuery);
-          final userIdMatch = acc.userId.toLowerCase().contains(lowercaseQuery);
-          final notesMatch = (acc.notes ?? "").toLowerCase().contains(
-            lowercaseQuery,
-          );
-          final tagsMatch = acc.tags.any(
-            (tag) => tag.toLowerCase().contains(lowercaseQuery),
-          );
-          return platformMatch ||
-              nameMatch ||
-              userIdMatch ||
-              notesMatch ||
-              tagsMatch;
+          // 检查条目是否满足所有关键词
+          return keywords.every((keyword) {
+            final platformMatch = acc.platform.toLowerCase().contains(keyword);
+            final nameMatch = acc.name.toLowerCase().contains(keyword);
+            final userIdMatch = acc.userId.toLowerCase().contains(keyword);
+            final notesMatch = (acc.notes ?? "").toLowerCase().contains(
+              keyword,
+            );
+            final urlMatch = acc.url.toLowerCase().contains(keyword);
+            final tagsMatch = acc.tags.any(
+              (tag) => tag.toLowerCase().contains(keyword),
+            );
+            return platformMatch ||
+                nameMatch ||
+                userIdMatch ||
+                notesMatch ||
+                urlMatch ||
+                tagsMatch;
+          });
         }).toList();
       }
       // 排序
