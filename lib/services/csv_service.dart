@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:42:38
- * @LastEditTime: 2026-06-06 17:17:42
+ * @LastEditTime: 2026-06-11 17:02:40
  * @Description: CSV处理
  */
 
@@ -16,8 +16,8 @@ import 'storage_service.dart';
 class CsvService {
   final StorageService _storageService = StorageService();
 
-  /// 唤起文件选择并导入CSV数据
-  Future<int> pickAndImportCsv() async {
+  // 唤起文件选择并导入CSV数据
+  Future<(int success, int skipped)> pickAndImportCsv() async {
     try {
       // 1. 选择文件
       FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -25,33 +25,47 @@ class CsvService {
         allowedExtensions: ['csv'],
       );
       if (result == null || result.files.single.path == null) {
-        return 0; // 用户取消
+        return (0, 0); // 用户取消
       }
       // 2. 读取文件
       final File file = File(result.files.single.path!);
       // 注意：Windows Excel默认导出的CSV往往是GBK编码
       // 如果读取时报错"Invalid UTF-8"，请尝试使用latin1或安装charset包处理GBK
       final String csvContent = await file.readAsString(encoding: utf8);
-      // 3. 解析 CSV
+      // 3. 解析CSV
       List<List<dynamic>> rows = const CsvToListConverter().convert(csvContent);
-      if (rows.isEmpty) return 0;
-      int successCount = 0;
-      // 4. 遍历并存入数据库(假设第一行是表头，从第2行开始)
+      if (rows.isEmpty) return (0, 0);
+      // 读取库中现存所有条目并获取其平台名
+      final existingAccounts = await _storageService.getAllAccounts();
+      final Set<String> existingNames = existingAccounts
+          .map((a) => a.platform.toLowerCase().trim())
+          .toSet();
+      int successCount = 0, duplicateCount = 0;
+      // 4. 遍历并存入数据库(假设第一行是表头 从第2行开始)
       for (int i = 1; i < rows.length; i++) {
         try {
           final row = rows[i];
-          if (row.length < 13) continue; // 检查列数是否足够（至少13列）
-          Account acc = Account.fromCsv(row); // 调用 Account 模型的 factory 方法
+          if (row.length < 13) continue; // 检查列数是否足够(>=13列)
+          // 查重
+          String platformName = row[0]?.toString().trim() ?? "";
+          if (platformName.isEmpty) continue;
+          if (existingNames.contains(platformName.toLowerCase())) {
+            duplicateCount++;
+            debugPrint("skip: $platformName");
+            continue;
+          }
+          Account acc = Account.fromCsv(row); // 调用Account模型的factory方法
           await _storageService.insertAccount(acc);
+          existingNames.add(platformName.toLowerCase()); // 更新存在(重名)列表
           successCount++;
         } catch (e) {
           debugPrint("导入第 $i 行失败: $e");
         }
       }
-      return successCount;
+      return (successCount, duplicateCount);
     } catch (e) {
       debugPrint("CSV导入服务异常: $e");
-      return 0;
+      return (0, 0);
     }
   }
 

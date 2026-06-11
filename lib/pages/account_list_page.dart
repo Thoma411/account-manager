@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-09 22:30:21
+ * @LastEditTime: 2026-06-11 16:47:01
  * @Description: 账户信息页(查看页)
  */
 
@@ -715,6 +715,28 @@ class AccountListPageState extends State<AccountListPage> {
       if (_formKey.currentState!.validate()) {
         // 获取编辑对象
         final acc = _allAccounts.firstWhere((a) => a.id == _selectedAccountId);
+        final newName = _platformController.text.trim();
+        // 重名检查
+        if (newName.toLowerCase() != acc.platform.toLowerCase()) {
+          bool exists = await StorageService().isPlatformNameExists(newName);
+          if (exists) {
+            if (!mounted) return;
+            showDialog(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: const Text("平台名冲突"),
+                content: Text("修改失败：平台 '$newName' 已存在，请更换名称。"),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text("确认"),
+                  ),
+                ],
+              ),
+            );
+            return;
+          }
+        }
         // 脏检查
         bool hasChanged =
             _platformController.text != acc.platform ||

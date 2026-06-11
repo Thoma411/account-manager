@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-09 22:48:46
+ * @LastEditTime: 2026-06-11 17:02:37
  * @Description: 主框架
  */
 
@@ -329,6 +329,29 @@ class _ShellPageState extends State<ShellPage> {
                 ElevatedButton(
                   onPressed: () async {
                     if (formKey.currentState!.validate()) {
+                      // 平台重名检测
+                      final storage = StorageService();
+                      bool isDuplicate = await storage.isPlatformNameExists(
+                        platform,
+                      );
+                      if (isDuplicate) {
+                        if (!context.mounted) return;
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text("平台名冲突"),
+                            content: Text("平台 '$platform' 已存在，请更换名称。"),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: const Text("确认"),
+                              ),
+                            ],
+                          ),
+                        );
+                        return;
+                      }
+                      // 保存新账户
                       final newAccount = Account(
                         id: const Uuid().v4(),
                         platform: platform,
@@ -871,11 +894,11 @@ class SettingsPageState extends State<SettingsPage> {
           leading: const Icon(Icons.upload_file),
           enabled: _hasDb, // 必须建库后才能导入
           onTap: () async {
-            int count = await CsvService().pickAndImportCsv();
+            final (success, skipped) = await CsvService().pickAndImportCsv();
             if (!context.mounted) return;
-            if (count > 0) {
+            if (success > 0 || skipped > 0) {
               widget.onDataChanged?.call();
-              MessageUtil.show(context, "成功导入 $count 条数据！");
+              MessageUtil.show(context, "成功导入账户 $success 条，跳过 $skipped 条");
             }
           },
         ),

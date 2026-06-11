@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-07 21:31:25
+ * @LastEditTime: 2026-06-11 15:58:50
  * @Description: 与SQLite交互的方法
  */
 
@@ -53,11 +53,10 @@ class StorageService {
     }
   }
 
+  // 初始化数据库
   Future<Database> _initDB() async {
-    // Windows 端初始化数据库引擎
-    sqfliteFfiInit();
+    sqfliteFfiInit(); // Windows端初始化数据库引擎
     var databaseFactory = databaseFactoryFfi;
-
     final dbPath = await databaseFactory.getDatabasesPath();
     final path = join(dbPath, 'vault_keeper.db');
     debugPrint("db real path: $path");
@@ -96,6 +95,7 @@ class StorageService {
     );
   }
 
+  // 更新逻辑版本号
   Future<void> _incrementRevision() async {
     final s = SettingsService();
     // 读取当前版本号 默认为'0'
@@ -160,5 +160,24 @@ class StorageService {
     );
     if (results.isNotEmpty) return results.first['value'] as String;
     return null;
+  }
+
+  // 检查指定平台名是否存在
+  Future<bool> isPlatformNameExists(
+    String platformName, {
+    String? excludeId,
+  }) async {
+    final db = await database;
+    // 如果提供了excludeId(修改场景)则排除掉该ID对应的记录
+    final List<Map<String, dynamic>> maps = await db.query(
+      'accounts',
+      where: excludeId == null
+          ? 'LOWER(platform) = ?'
+          : 'LOWER(platform) = ? AND id != ?',
+      whereArgs: excludeId == null
+          ? [platformName.toLowerCase().trim()]
+          : [platformName.toLowerCase().trim(), excludeId],
+    ); // 不区分大小写
+    return maps.isNotEmpty;
   }
 }
