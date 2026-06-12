@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-12 22:22:52
+ * @LastEditTime: 2026-06-12 22:54:23
  * @Description: 账户信息页(查看页)
  */
 
@@ -356,29 +356,33 @@ class AccountListPageState extends State<AccountListPage> {
                   top: 0,
                   bottom: 0,
                   width: panelWidth,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 20,
-                          offset: const Offset(-5, 0),
-                        ),
-                      ],
+                  child: GestureDetector(
+                    onTap: () {}, // 捕获点击防止意外详情页关闭
+                    behavior: HitTestBehavior.opaque,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 20,
+                            offset: const Offset(-5, 0),
+                          ),
+                        ],
+                      ),
+                      // 未选中任何行则面板内容显示为空，防止报错
+                      child: (_isPanelOpen && _selectedAccountId != null)
+                          ? (() {
+                              // 在当前显示的列表中找相应ID匹配的账户对象
+                              final account = _displayAccounts.firstWhere(
+                                (acc) => acc.id == _selectedAccountId,
+                                orElse: () =>
+                                    _displayAccounts.first, // 万一没找到则回退到第一条
+                              );
+                              return _buildDetailPanel(account);
+                            })()
+                          : const SizedBox.shrink(),
                     ),
-                    // 未选中任何行则面板内容显示为空，防止报错
-                    child: (_isPanelOpen && _selectedAccountId != null)
-                        ? (() {
-                            // 在当前显示的列表中找相应ID匹配的账户对象
-                            final account = _displayAccounts.firstWhere(
-                              (acc) => acc.id == _selectedAccountId,
-                              orElse: () =>
-                                  _displayAccounts.first, // 万一没找到则回退到第一条
-                            );
-                            return _buildDetailPanel(account);
-                          })()
-                        : const SizedBox.shrink(),
                   ),
                 ),
               ],
