@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-12 22:54:23
+ * @LastEditTime: 2026-06-12 23:18:37
  * @Description: 账户信息页(查看页)
  */
 
@@ -1015,15 +1015,20 @@ class AccountListPageState extends State<AccountListPage> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      Text(
-                        isPasswordVisible ? acc.pswd : "••••••••",
-                        style: TextStyle(
-                          fontFamily: 'Consolas',
-                          color: isPasswordVisible
-                              ? Colors.blue
-                              : Colors.grey[400],
-                          fontSize: 13,
-                          letterSpacing: isPasswordVisible ? 0 : 1.5,
+                      Expanded(
+                        child: Text(
+                          isPasswordVisible ? acc.pswd : "••••••••",
+                          textAlign: TextAlign.right,
+                          overflow: TextOverflow.ellipsis, // 超出长度省略
+                          maxLines: 1,
+                          style: TextStyle(
+                            fontFamily: 'Consolas',
+                            color: isPasswordVisible
+                                ? Colors.blue
+                                : Colors.grey[400],
+                            fontSize: 14,
+                            letterSpacing: isPasswordVisible ? 0.5 : 1.5,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
