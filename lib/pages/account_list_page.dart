@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-12 00:07:54
+ * @LastEditTime: 2026-06-12 22:22:52
  * @Description: 账户信息页(查看页)
  */
 
@@ -874,6 +874,25 @@ class AccountListPageState extends State<AccountListPage> {
     bool isSelected = _selectedAccountId == acc.id;
     bool isPasswordVisible = _visiblePasswordIds.contains(acc.id);
     Color statusColor = _getStatusColor(acc.status);
+    // c1-副标题: 昵称/ID
+    String firstColSub = acc.name.isNotEmpty
+        ? acc.name
+        : (acc.userId.isNotEmpty ? acc.userId : "-");
+    // c2-内容: 邮箱/手机
+    IconData secondColIcon = Icons.alternate_email;
+    String secondColText = "-";
+    Color secondColColor = Colors.grey[300]!;
+    // 决定第1/2列显示什么属性
+    if (acc.email.isNotEmpty) {
+      secondColIcon = Icons.email_outlined;
+      secondColText = acc.email;
+      secondColColor = Colors.black54;
+    } else if (acc.phone.isNotEmpty) {
+      secondColIcon = Icons.phone_android_rounded; // 补全手机图标
+      secondColText = acc.phone;
+      secondColColor = Colors.black54;
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: InkWell(
@@ -901,9 +920,9 @@ class AccountListPageState extends State<AccountListPage> {
                 // 平台Logo
                 _buildSmallLogo(acc, statusColor),
                 const SizedBox(width: 16),
-                // 平台与昵称
+                // c1: 平台与昵称(固定比例)
                 Expanded(
-                  flex: 2,
+                  flex: 3,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -917,39 +936,78 @@ class AccountListPageState extends State<AccountListPage> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        acc.name,
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        firstColSub,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: firstColSub == "-"
+                              ? Colors.grey[300]
+                              : Colors.grey[600],
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
-                // 账号与邮箱
+                // c2: 账号/邮箱(固定比例，始终存在)
                 Expanded(
-                  flex: 3,
+                  flex: 4,
                   child: Row(
                     children: [
-                      const Icon(
-                        Icons.email_outlined,
+                      Icon(
+                        secondColIcon,
                         size: 14,
-                        color: Colors.grey,
+                        color: secondColText == "-"
+                            ? Colors.transparent
+                            : Colors.grey,
                       ),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          acc.email.isNotEmpty ? acc.email : acc.userId,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Colors.black54,
-                          ),
+                          secondColText,
+                          style: TextStyle(fontSize: 13, color: secondColColor),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ),
                 ),
-                // 右侧：密码与快捷操作
+                // c3: 标签区(固定宽度140，始终存在)
                 SizedBox(
-                  width: 200, // 固定右侧操作区宽度
+                  width: 105,
+                  child: acc.tags.isEmpty
+                      ? const SizedBox.shrink()
+                      : Wrap(
+                          spacing: 4,
+                          runSpacing: 0,
+                          children: acc.tags
+                              .take(2)
+                              .map(
+                                (t) => Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blueGrey.withValues(
+                                      alpha: 0.08,
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    t,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.blueGrey,
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                ),
+                // c4: 密码与快捷操作
+                SizedBox(
+                  width: 180, // 固定右侧操作区宽度
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -1339,8 +1397,12 @@ class AccountListPageState extends State<AccountListPage> {
   }
 
   // 添加新标签并查重
-  void _addNewTag(String val) {
+  void _addNewTag(String val, {int maxChars = 6}) {
     final cleanTag = val.trim();
+    if (cleanTag.length > maxChars) {
+      MessageUtil.show(context, "标签长度不能超过 $maxChars 个字");
+      return;
+    }
     if (cleanTag.isNotEmpty && !_tempTags.contains(cleanTag)) {
       setState(() {
         _tempTags.add(cleanTag);
