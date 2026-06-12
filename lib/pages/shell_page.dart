@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-11 17:02:37
+ * @LastEditTime: 2026-06-12 23:49:23
  * @Description: 主框架
  */
 
@@ -858,6 +858,8 @@ class SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isLoggedIn = _hasDb && SecurityService().currentDataKey != null;
+
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
@@ -959,16 +961,16 @@ class SettingsPageState extends State<SettingsPage> {
             width: 350,
             height: 50,
             child: OutlinedButton.icon(
-              onPressed: _handleLogout,
-              icon: const Icon(
+              onPressed: isLoggedIn ? _handleLogout : null,
+              icon: Icon(
                 Icons.logout_rounded,
-                color: Colors.redAccent,
+                color: isLoggedIn ? Colors.redAccent : Colors.grey,
                 size: 20,
               ),
-              label: const Text(
+              label: Text(
                 "退出登录并锁定保险箱",
                 style: TextStyle(
-                  color: Colors.redAccent,
+                  color: isLoggedIn ? Colors.redAccent : Colors.grey,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1,
                 ),
@@ -977,7 +979,10 @@ class SettingsPageState extends State<SettingsPage> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                side: const BorderSide(color: Colors.redAccent, width: 1.5),
+                side: BorderSide(
+                  color: isLoggedIn ? Colors.redAccent : Colors.grey,
+                  width: 1.5,
+                ),
                 foregroundColor: Colors.redAccent,
               ),
             ),
