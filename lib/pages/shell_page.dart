@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-14 21:44:15
+ * @LastEditTime: 2026-06-14 22:39:54
  * @Description: 主框架
  */
 
@@ -185,6 +185,8 @@ class _ShellPageState extends State<ShellPage> {
     final birthController = TextEditingController();
     final signupController = TextEditingController();
 
+    bool isExpanded = false; // 默认折叠
+    double devideH = 6;
     showDialog(
       context: context,
       builder: (context) {
@@ -201,28 +203,34 @@ class _ShellPageState extends State<ShellPage> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min, // 紧凑布局
                       children: [
+                        // 关键信息
                         TextFormField(
                           decoration: const InputDecoration(labelText: "平台名称*"),
                           validator: (v) =>
                               (v == null || v.isEmpty) ? "请输入平台名称" : null,
                           onChanged: (v) => platform = v,
                         ),
+                        const Divider(),
                         TextFormField(
                           decoration: const InputDecoration(labelText: "用户昵称*"),
                           onChanged: (v) => name = v,
                         ),
+                        SizedBox(height: devideH),
                         TextFormField(
                           decoration: const InputDecoration(labelText: "用户ID*"),
                           onChanged: (v) => userId = v,
                         ),
+                        SizedBox(height: devideH),
                         TextFormField(
                           decoration: const InputDecoration(labelText: "密码*"),
                           onChanged: (v) => pswd = v,
                         ),
+                        SizedBox(height: devideH),
                         TextFormField(
                           decoration: const InputDecoration(labelText: "绑定邮箱*"),
                           onChanged: (v) => email = v,
                         ),
+                        SizedBox(height: devideH),
                         TextFormField(
                           decoration: const InputDecoration(labelText: "绑定手机*"),
                           inputFormatters: [
@@ -231,88 +239,146 @@ class _ShellPageState extends State<ShellPage> {
                           ],
                           onChanged: (v) => phone = v,
                         ),
-                        const Divider(height: 32),
-                        TextFormField(
-                          decoration: const InputDecoration(labelText: "网址"),
-                          onChanged: (v) => url = v,
+                        SizedBox(height: devideH),
+                        // 附加信息
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 300), // 动画时长
+                          curve: Curves.easeInOut,
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: isExpanded
+                                ? Column(
+                                    children: [
+                                      TextFormField(
+                                        decoration: const InputDecoration(
+                                          labelText: "网址",
+                                        ),
+                                        onChanged: (v) => url = v,
+                                      ),
+                                      SizedBox(height: devideH),
+                                      TextFormField(
+                                        decoration: const InputDecoration(
+                                          labelText: "标签 (逗号分隔)",
+                                        ),
+                                        onChanged: (v) => tagsStr = v,
+                                      ),
+                                      SizedBox(height: devideH),
+                                      DropdownButtonFormField<int>(
+                                        initialValue: status,
+                                        decoration: const InputDecoration(
+                                          labelText: "账户状态",
+                                        ),
+                                        items: const [
+                                          DropdownMenuItem(
+                                            value: 1,
+                                            child: Text("使用中"),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: 0,
+                                            child: Text("未注册"),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: 2,
+                                            child: Text("已注销"),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: 3,
+                                            child: Text("无法使用"),
+                                          ),
+                                        ],
+                                        onChanged: (v) => setDialogState(
+                                          () => status = v ?? 1,
+                                        ),
+                                      ),
+                                      SizedBox(height: devideH),
+                                      TextFormField(
+                                        controller: birthController,
+                                        decoration: InputDecoration(
+                                          labelText: "生日",
+                                          suffixIcon: IconButton(
+                                            icon: const Icon(
+                                              Icons.calendar_today,
+                                              size: 16,
+                                            ),
+                                            onPressed: () async {
+                                              final date = await showDatePicker(
+                                                context: context,
+                                                initialDate: DateTime.now(),
+                                                firstDate: DateTime(1900),
+                                                lastDate: DateTime(2100),
+                                              );
+                                              if (date != null) {
+                                                birthController.text =
+                                                    DateFormat(
+                                                      'yyyy-MM-dd',
+                                                    ).format(date);
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(height: devideH),
+                                      TextFormField(
+                                        controller: signupController,
+                                        decoration: InputDecoration(
+                                          labelText: "注册日期",
+                                          suffixIcon: IconButton(
+                                            icon: const Icon(
+                                              Icons.calendar_today,
+                                              size: 16,
+                                            ),
+                                            onPressed: () async {
+                                              final date = await showDatePicker(
+                                                context: context,
+                                                initialDate: DateTime.now(),
+                                                firstDate: DateTime(1900),
+                                                lastDate: DateTime(2100),
+                                              );
+                                              if (date != null) {
+                                                signupController.text =
+                                                    DateFormat(
+                                                      'yyyy-MM-dd',
+                                                    ).format(date);
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(height: devideH),
+                                      CheckboxListTile(
+                                        title: const Text("是否已实名"),
+                                        value: realName,
+                                        onChanged: (v) {
+                                          setDialogState(() {
+                                            realName = v ?? false;
+                                          });
+                                        },
+                                      ),
+                                      SizedBox(height: devideH),
+                                      TextFormField(
+                                        decoration: const InputDecoration(
+                                          labelText: "备注",
+                                        ),
+                                        onChanged: (v) => notes = v,
+                                      ),
+                                    ],
+                                  )
+                                : const SizedBox.shrink(),
+                          ),
                         ),
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<int>(
-                          initialValue: status,
-                          decoration: const InputDecoration(labelText: "账户状态"),
-                          items: const [
-                            DropdownMenuItem(value: 1, child: Text("使用中")),
-                            DropdownMenuItem(value: 0, child: Text("未注册")),
-                            DropdownMenuItem(value: 2, child: Text("已注销")),
-                            DropdownMenuItem(value: 3, child: Text("无法使用")),
-                          ],
-                          onChanged: (v) =>
-                              setDialogState(() => status = v ?? 1),
-                        ),
-                        TextFormField(
-                          controller: birthController,
-                          decoration: InputDecoration(
-                            labelText: "生日",
-                            suffixIcon: IconButton(
-                              icon: const Icon(Icons.calendar_today, size: 16),
-                              onPressed: () async {
-                                final date = await showDatePicker(
-                                  context: context,
-                                  initialDate: DateTime.now(),
-                                  firstDate: DateTime(1900),
-                                  lastDate: DateTime(2100),
-                                );
-                                if (date != null) {
-                                  birthController.text = DateFormat(
-                                    'yyyy-MM-dd',
-                                  ).format(date);
-                                }
-                              },
+                        const SizedBox(height: 4),
+                        Center(
+                          child: TextButton.icon(
+                            onPressed: () {
+                              setDialogState(() => isExpanded = !isExpanded);
+                            },
+                            icon: Icon(
+                              isExpanded
+                                  ? Icons.expand_less
+                                  : Icons.expand_more,
                             ),
+                            label: Text(isExpanded ? "收起附加信息" : "填写更多信息"),
                           ),
-                        ),
-                        TextFormField(
-                          decoration: const InputDecoration(
-                            labelText: "标签 (逗号分隔)",
-                          ),
-                          onChanged: (v) => tagsStr = v,
-                        ),
-                        TextFormField(
-                          decoration: const InputDecoration(labelText: "备注"),
-                          onChanged: (v) => notes = v,
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: signupController,
-                          decoration: InputDecoration(
-                            labelText: "注册日期",
-                            suffixIcon: IconButton(
-                              icon: const Icon(Icons.calendar_today, size: 16),
-                              onPressed: () async {
-                                final date = await showDatePicker(
-                                  context: context,
-                                  initialDate: DateTime.now(),
-                                  firstDate: DateTime(1900),
-                                  lastDate: DateTime(2100),
-                                );
-                                if (date != null) {
-                                  signupController.text = DateFormat(
-                                    'yyyy-MM-dd',
-                                  ).format(date);
-                                }
-                              },
-                            ),
-                          ),
-                        ),
-                        // 实名勾选框，使用 setDialogState 刷新
-                        CheckboxListTile(
-                          title: const Text("是否已实名"),
-                          value: realName,
-                          onChanged: (v) {
-                            setDialogState(() {
-                              realName = v ?? false;
-                            });
-                          },
                         ),
                       ],
                     ),
@@ -357,12 +423,11 @@ class _ShellPageState extends State<ShellPage> {
                           phone.trim().isNotEmpty; // 检测是否充分填写信息
                       if (!hasAnyCredential) {
                         if (!context.mounted) return;
-                        // 使用你之前的 _showGuardDialog 提示用户
                         _showGuardDialog(
                           "信息不足",
                           "请至少填写一项关键信息：[昵称 | ID | 密码 | 邮箱 | 手机]",
                         );
-                        return; // 拦截，不执行保存
+                        return;
                       }
                       // 保存新账户
                       final newAccount = Account(
