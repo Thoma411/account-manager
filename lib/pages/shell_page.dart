@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-12 23:49:23
+ * @LastEditTime: 2026-06-14 21:44:15
  * @Description: 主框架
  */
 
@@ -202,20 +202,34 @@ class _ShellPageState extends State<ShellPage> {
                       mainAxisSize: MainAxisSize.min, // 紧凑布局
                       children: [
                         TextFormField(
-                          decoration: const InputDecoration(
-                            labelText: "平台名称 (必填) *",
-                          ),
+                          decoration: const InputDecoration(labelText: "平台名称*"),
                           validator: (v) =>
                               (v == null || v.isEmpty) ? "请输入平台名称" : null,
                           onChanged: (v) => platform = v,
                         ),
                         TextFormField(
-                          decoration: const InputDecoration(
-                            labelText: "用户昵称 (必填) *",
-                          ),
-                          validator: (v) =>
-                              (v == null || v.isEmpty) ? "请输入用户昵称" : null,
+                          decoration: const InputDecoration(labelText: "用户昵称*"),
                           onChanged: (v) => name = v,
+                        ),
+                        TextFormField(
+                          decoration: const InputDecoration(labelText: "用户ID*"),
+                          onChanged: (v) => userId = v,
+                        ),
+                        TextFormField(
+                          decoration: const InputDecoration(labelText: "密码*"),
+                          onChanged: (v) => pswd = v,
+                        ),
+                        TextFormField(
+                          decoration: const InputDecoration(labelText: "绑定邮箱*"),
+                          onChanged: (v) => email = v,
+                        ),
+                        TextFormField(
+                          decoration: const InputDecoration(labelText: "绑定手机*"),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(11),
+                          ],
+                          onChanged: (v) => phone = v,
                         ),
                         const Divider(height: 32),
                         TextFormField(
@@ -234,22 +248,6 @@ class _ShellPageState extends State<ShellPage> {
                           ],
                           onChanged: (v) =>
                               setDialogState(() => status = v ?? 1),
-                        ),
-                        TextFormField(
-                          decoration: const InputDecoration(labelText: "用户ID"),
-                          onChanged: (v) => userId = v,
-                        ),
-                        TextFormField(
-                          decoration: const InputDecoration(labelText: "密码"),
-                          onChanged: (v) => pswd = v,
-                        ),
-                        TextFormField(
-                          decoration: const InputDecoration(labelText: "绑定手机"),
-                          onChanged: (v) => phone = v,
-                        ),
-                        TextFormField(
-                          decoration: const InputDecoration(labelText: "绑定邮箱"),
-                          onChanged: (v) => email = v,
                         ),
                         TextFormField(
                           controller: birthController,
@@ -351,6 +349,21 @@ class _ShellPageState extends State<ShellPage> {
                         );
                         return;
                       }
+                      bool hasAnyCredential =
+                          name.trim().isNotEmpty ||
+                          userId.trim().isNotEmpty ||
+                          pswd.trim().isNotEmpty ||
+                          email.trim().isNotEmpty ||
+                          phone.trim().isNotEmpty; // 检测是否充分填写信息
+                      if (!hasAnyCredential) {
+                        if (!context.mounted) return;
+                        // 使用你之前的 _showGuardDialog 提示用户
+                        _showGuardDialog(
+                          "信息不足",
+                          "请至少填写一项关键信息：[昵称 | ID | 密码 | 邮箱 | 手机]",
+                        );
+                        return; // 拦截，不执行保存
+                      }
                       // 保存新账户
                       final newAccount = Account(
                         id: const Uuid().v4(),
@@ -370,7 +383,12 @@ class _ShellPageState extends State<ShellPage> {
                             ? null
                             : DateTime.tryParse(signupController.text),
                         realName: realName,
-                        tags: tagsStr.isEmpty ? [] : tagsStr.split(','),
+                        tags: tagsStr
+                            .split(RegExp(r'[,，]'))
+                            .map((t) => t.trim())
+                            .where((t) => t.isNotEmpty)
+                            .take(8)
+                            .toList(), // 标签最大数量: 8
                         lastModified: DateTime.now().toIso8601String(),
                       );
                       await StorageService().insertAccount(newAccount);

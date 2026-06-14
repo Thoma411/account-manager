@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-12 23:18:37
+ * @LastEditTime: 2026-06-14 21:40:48
  * @Description: 账户信息页(查看页)
  */
 
@@ -771,6 +771,30 @@ class AccountListPageState extends State<AccountListPage> {
             return;
           }
         }
+        // 信息充分性检查
+        bool hasAnyCredential =
+            _nameController.text.trim().isNotEmpty ||
+            _userIdController.text.trim().isNotEmpty ||
+            _pswdController.text.trim().isNotEmpty ||
+            _emailController.text.trim().isNotEmpty ||
+            _phoneController.text.trim().isNotEmpty;
+        if (!hasAnyCredential) {
+          if (!mounted) return;
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text("保存失败"),
+              content: const Text("请至少填写一项关键信息：[ 昵称 | ID | 密码 | 邮箱 | 手机 ]"),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text("确认"),
+                ),
+              ],
+            ),
+          );
+          return;
+        }
         // 脏检查
         bool hasChanged =
             _platformController.text != acc.platform ||
@@ -1079,14 +1103,17 @@ class AccountListPageState extends State<AccountListPage> {
               padding: const EdgeInsets.all(16),
               children: [
                 // 分组1: 核心凭据
-                _buildEditableInfoRow(
-                  "用户昵称",
-                  _nameController,
-                  isMandatory: true,
-                ),
+                _buildEditableInfoRow("用户昵称", _nameController),
                 _buildEditableInfoRow("登录账号", _userIdController),
                 _buildEditableInfoRow("绑定邮箱", _emailController),
-                _buildEditableInfoRow("绑定手机", _phoneController),
+                _buildEditableInfoRow(
+                  "绑定手机",
+                  _phoneController,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(11),
+                  ],
+                ),
                 _buildEditablePasswordRow(account), // 密码行
                 const Divider(),
                 // 分组2: 平台与标记
@@ -1158,10 +1185,10 @@ class AccountListPageState extends State<AccountListPage> {
   Widget _buildEditableInfoRow(
     String label,
     TextEditingController controller, {
-    bool isMandatory = false,
     bool isPassword = false,
     bool isDateField = false,
     int maxLines = 1,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     final bool isMasked =
         isPassword && !_visiblePasswordIds.contains(_selectedAccountId!);
@@ -1192,6 +1219,7 @@ class AccountListPageState extends State<AccountListPage> {
               child: TextFormField(
                 controller: controller,
                 maxLines: 1, // 备注字段如果需要多行，单独处理
+                inputFormatters: inputFormatters,
                 obscureText: isMasked,
                 style: const TextStyle(
                   fontSize: 14,
