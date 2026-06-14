@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-14 21:40:48
+ * @LastEditTime: 2026-06-14 22:27:21
  * @Description: 账户信息页(查看页)
  */
 
@@ -407,7 +407,7 @@ class AccountListPageState extends State<AccountListPage> {
           ),
           const SizedBox(height: 12),
           Text(
-            _isDbCreated ? "空空如也？请点击侧栏导入或点击'+'号添加账户" : "尚未初始化数据库，请选择操作以开始使用",
+            _isDbCreated ? "空空如也？请前往设置导入或点击'+'号添加账户" : "尚未初始化数据库，请选择操作以开始使用",
             style: const TextStyle(color: Colors.grey),
           ),
           const SizedBox(height: 40),
