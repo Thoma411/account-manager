@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-04-13 18:19:04
- * @LastEditTime: 2026-06-15 21:09:20
+ * @LastEditTime: 2026-06-15 21:29:07
  * @Description: webdav
  */
 
@@ -165,7 +165,31 @@ class WebDavService {
         return false;
       }
     } catch (e) {
-      debugPrint("AutoSync: 退出同步异常: $e");
+      debugPrint("AutoSync: 退出时同步异常: $e");
+      return false;
+    }
+  }
+
+  // 执行静默安全下载
+  Future<bool> downloadIfSafe() async {
+    try {
+      final decision = await compareVersions();
+      if (decision == SyncDecision.remoteNewer) {
+        final path = await StorageService().getDatabasePath();
+        await StorageService().closeDatabase(); // *先关库
+        String newEtag = await downloadVault(path);
+        // 更新本地配置层的锚点
+        final s = SettingsService();
+        await s.set('last_synced_etag', newEtag);
+        // last_synced_revision会在下次解锁时的AuthService补丁中对齐
+        debugPrint("AutoSync: 已下载云端更新");
+        return true;
+      } else {
+        debugPrint("AutoSync: $decision 终止自动下载");
+        return false;
+      }
+    } catch (e) {
+      debugPrint("AutoSync: 启动时同步异常: $e");
       return false;
     }
   }
