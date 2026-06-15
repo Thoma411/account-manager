@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-15 18:42:36
+ * @LastEditTime: 2026-06-15 21:48:32
  * @Description: 与SQLite交互的方法
  */
 
@@ -22,7 +22,13 @@ class StorageService {
   StorageService._internal();
 
   Future<Database> get database async {
-    if (_database != null) return _database!;
+    if (_database != null) {
+      if (!await isDatabaseExists()) {
+        _database = null;
+        throw Exception("数据库文件丢失，请重启应用");
+      }
+      return _database!;
+    }
     _database = await _initDB();
     return _database!;
   }
