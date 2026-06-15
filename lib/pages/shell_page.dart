@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-14 22:39:54
+ * @LastEditTime: 2026-06-15 18:44:00
  * @Description: 主框架
  */
 
@@ -19,6 +19,7 @@ import '../models/account.dart';
 import '../services/storage_service.dart';
 import '../services/security_service.dart';
 import '../services/settings_service.dart';
+import '../services/icon_service.dart';
 import '../services/webdav_service.dart';
 import '../services/csv_service.dart';
 import '../utils/utils.dart';
@@ -507,19 +508,57 @@ class SettingsPageState extends State<SettingsPage> {
   final _settings = SettingsService();
   bool _isDarkMode = false; // 深色模式
   bool _hasDb = false; // 控制WebDAV按钮
+  bool _autoFetchIcons = false; // 自动抓取图标
 
   @override
   void initState() {
     super.initState();
     // 从已经loadSettings加载好的缓存中获取值
     _isDarkMode = _settings.get('dark_mode') == 'true';
+    _autoFetchIcons = _settings.get('auto_fetch_icons') == 'true';
     checkDbStatus();
   }
 
+  // 切换深色模式
   void _toggleDarkMode(bool value) async {
     setState(() => _isDarkMode = value);
-    // 异步存入数据库
-    await _settings.set('dark_mode', value.toString());
+    await _settings.set('dark_mode', value.toString()); // 异步存入数据库
+  }
+
+  // 切换自动抓取图标
+  void _toggleAutoFetch(bool value) async {
+    setState(() => _autoFetchIcons = value);
+    await _settings.set('auto_fetch_icons', value.toString());
+  }
+
+  // 清除缓存图标
+  void _handleClearIcons() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("清除图标缓存"),
+        content: const Text("这将删除本地存储的全部网站的图标。"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("取消"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await IconService().clearAllIcons();
+                if (!context.mounted) return;
+                Navigator.pop(context);
+                MessageUtil.show(context, "缓存已清空");
+              } catch (e) {
+                MessageUtil.show(context, "清除失败: $e");
+              }
+            },
+            child: const Text("确认"),
+          ),
+        ],
+      ),
+    );
   }
 
   // 检查数据库状态 决定是否允许配置WebDAV
@@ -957,6 +996,21 @@ class SettingsPageState extends State<SettingsPage> {
           value: _isDarkMode,
           onChanged: _toggleDarkMode,
           secondary: const Icon(Icons.brightness_6),
+        ),
+        const Divider(),
+        SwitchListTile(
+          title: const Text("自动抓取图标"),
+          subtitle: const Text("根据网址自动获取平台 Logo（需联网）"),
+          value: _autoFetchIcons,
+          onChanged: _toggleAutoFetch,
+          secondary: const Icon(Icons.image_search),
+        ),
+        const Divider(),
+        ListTile(
+          title: const Text("清除图标缓存"),
+          subtitle: const Text("删除已下载的所有本地图标文件"),
+          leading: const Icon(Icons.delete_sweep_outlined),
+          onTap: _handleClearIcons,
         ),
         const Divider(),
 

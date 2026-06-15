@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-15 16:47:55
+ * @LastEditTime: 2026-06-15 18:42:36
  * @Description: 与SQLite交互的方法
  */
 
@@ -181,5 +181,16 @@ class StorageService {
           : [platformName.toLowerCase().trim(), excludeId],
     ); // 不区分大小写
     return maps.isNotEmpty;
+  }
+
+  // 检查指定账户是否存在
+  Future<bool> isAccountExists(String id) async {
+    final db = await database;
+    final List<Map<String, dynamic>> res = await db.query(
+      'accounts',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    return res.isNotEmpty;
   }
 }

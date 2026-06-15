@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-04-08 17:43:09
- * @LastEditTime: 2026-06-03 16:30:02
+ * @LastEditTime: 2026-06-15 17:53:16
  * @Description: 设置
  */
 
@@ -27,6 +27,7 @@ class SettingsService {
     // 同步状态
     'last_synced_revision', // 上传下载时的本地逻辑版本快照
     'last_synced_etag', // 上传下载成功后保存的云端eTag
+    'auto_fetch_icons', // 自动抓取图标
   };
 
   // 1. 初始化：应用启动即调用

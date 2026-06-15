@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-15 17:11:53
+ * @LastEditTime: 2026-06-15 18:36:18
  * @Description: 账户信息页(查看页)
  */
 
@@ -944,8 +944,11 @@ class AccountListPageState extends State<AccountListPage> {
         ),
       );
     }
-    // 本地不存在且有网址，发起后台静默抓取
-    if (acc.url.isNotEmpty) {
+    final bool isAutoFetchEnabled =
+        SettingsService().get('auto_fetch_icons') == 'true';
+    bool isAccountValid = _allAccounts.any((element) => element.id == acc.id);
+    // 用户允许抓取时，有网址&本地不存在&并非正在被删除，发起后台静默抓取
+    if (isAutoFetchEnabled && isAccountValid && acc.url.isNotEmpty) {
       IconService().fetchAndCacheIcon(acc.id, acc.url).then((_) {
         if (mounted) setState(() {}); // 抓取成功后刷新UI
       });

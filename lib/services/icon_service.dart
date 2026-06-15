@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-15 16:34:15
- * @LastEditTime: 2026-06-15 17:10:45
+ * @LastEditTime: 2026-06-15 18:50:22
  * @Description: 抓取网页icon
  */
 
@@ -10,6 +10,8 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+
+import 'storage_service.dart';
 
 class IconService {
   static final IconService _instance = IconService._internal();
@@ -33,6 +35,7 @@ class IconService {
   // 核心抓取逻辑：瀑布式请求
   Future<void> fetchAndCacheIcon(String id, String rawUrl) async {
     if (rawUrl.isEmpty) return;
+    if (!await StorageService().isAccountExists(id)) return;
     final domain = _extractDomain(rawUrl);
     if (domain.isEmpty) return;
     final filePath = await getIconPath(id);
@@ -44,9 +47,11 @@ class IconService {
     ];
     for (String apiUrl in apiPool) {
       try {
+        if (!await StorageService().isAccountExists(id)) return;
         final response = await http
             .get(Uri.parse(apiUrl))
             .timeout(const Duration(seconds: 5));
+        if (!await StorageService().isAccountExists(id)) return;
         if (response.statusCode == 200 && response.bodyBytes.length > 100) {
           // 简单过滤太小的无效图
           await File(filePath).writeAsBytes(response.bodyBytes);
@@ -69,6 +74,27 @@ class IconService {
       }
     } catch (e) {
       debugPrint("IconService: 清理图标失败: $e");
+    }
+  }
+
+  // 删除全部图标(清理缓存图标)
+  Future<void> clearAllIcons() async {
+    try {
+      final dir = await _iconDir;
+      if (await dir.exists()) {
+        // 获取目录下所有的文件实体
+        final List<FileSystemEntity> entities = await dir.list().toList();
+        for (var entity in entities) {
+          if (entity is File) {
+            final String id = p.basenameWithoutExtension(entity.path);
+            await deleteIcon(id);
+          }
+        }
+        debugPrint("IconService: 已清理缓存图标");
+      }
+    } catch (e) {
+      debugPrint("IconService: 批量清理失败: $e");
+      rethrow;
     }
   }
 
