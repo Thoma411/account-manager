@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-15 22:22:54
+ * @LastEditTime: 2026-06-15 22:52:15
  * @Description: 主框架
  */
 
@@ -79,19 +79,17 @@ class _ShellPageState extends State<ShellPage> with WindowListener {
   // 重写关闭应用窗口
   @override
   void onWindowClose() async {
-    bool isAutoSync = SettingsService().get('auto_sync_on_close') == 'true';
-    try {
-      // 如果开启了自动同步且数据库已解锁
-      if (isAutoSync && SecurityService().currentDataKey != null) {
+    await windowManager.hide(); // 先隐藏窗口
+    // 在后台静默执行同步和清理
+    final dk = SecurityService().currentDataKey;
+    if (dk != null) {
+      final s = SettingsService();
+      if (s.get('auto_sync_enabled') == 'true') {
         await WebDavService().uploadIfSafe();
       }
-    } catch (e) {
-      debugPrint("AutoSync: 退出备份失败 $e");
-    } finally {
-      // 彻底释放资源并销毁窗口结束进程
-      await StorageService().closeDatabase();
-      await windowManager.destroy();
     }
+    await StorageService().closeDatabase();
+    await windowManager.destroy(); // 销毁进程
   }
 
   @override
