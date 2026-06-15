@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-15 18:36:18
+ * @LastEditTime: 2026-06-15 19:04:42
  * @Description: 账户信息页(查看页)
  */
 
@@ -202,9 +202,11 @@ class AccountListPageState extends State<AccountListPage> {
       results.sort((a, b) {
         int cmp;
         if (_sortBy == 'platform') {
-          cmp = a.platform.toLowerCase().compareTo(b.platform.toLowerCase());
+          cmp = a.platformPinyin.compareTo(b.platformPinyin); // 比较拼音字符串
+          // 拼音完全一样则比较原始字符串
+          if (cmp == 0) cmp = a.platform.compareTo(b.platform);
         } else {
-          cmp = a.lastModified.compareTo(b.lastModified); // 按最后修改时间排序
+          cmp = a.lastModified.compareTo(b.lastModified);
         }
         return _isAscending ? cmp : -cmp;
       });

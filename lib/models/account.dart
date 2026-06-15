@@ -1,13 +1,14 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 21:55:09
- * @LastEditTime: 2026-06-11 17:17:14
+ * @LastEditTime: 2026-06-15 19:04:49
  * @Description: 13字段实体定义
  */
 
 import 'dart:convert';
 import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
+import 'package:lpinyin/lpinyin.dart';
 
 import '../services/security_service.dart';
 
@@ -15,6 +16,7 @@ class Account {
   final String id;
   // 明文字段
   String platform; // 1. 平台名
+  late final String platformPinyin; // 拼音缓存(用于排序比较)
   String url; // 2. 网址
   int status; // 3. 状态: 0未注册, 1使用中, 2已注销, 3无法使用
   List<String> tags; // 4. 标签
@@ -51,7 +53,13 @@ class Account {
        name = name.trim(),
        userId = userId.trim(),
        email = email.trim(),
-       phone = phone.trim();
+       phone = phone.trim() {
+    platformPinyin = PinyinHelper.getPinyinE(
+      platform,
+      separator: "",
+      format: PinyinFormat.WITHOUT_TONE,
+    ).toLowerCase(); // 中文->拼音
+  }
 
   // 转换为数据库存储的Map
   Map<String, dynamic> toMap() {

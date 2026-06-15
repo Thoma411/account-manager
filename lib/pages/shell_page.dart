@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-15 18:44:00
+ * @LastEditTime: 2026-06-15 19:06:13
  * @Description: 主框架
  */
 
@@ -986,7 +986,7 @@ class SettingsPageState extends State<SettingsPage> {
       padding: const EdgeInsets.all(24),
       children: [
         const Text(
-          "通用设置",
+          "通用",
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 20),
