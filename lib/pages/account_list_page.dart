@@ -1,16 +1,19 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-14 22:27:21
+ * @LastEditTime: 2026-06-15 17:11:53
  * @Description: 账户信息页(查看页)
  */
 
+import 'dart:io';
 import 'dart:convert';
 import 'package:encrypt/encrypt.dart' as enc;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:webdav_client/webdav_client.dart' as dav;
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 
@@ -18,6 +21,7 @@ import '../models/account.dart';
 import '../services/storage_service.dart';
 import '../services/settings_service.dart';
 import '../services/security_service.dart';
+import '../services/icon_service.dart';
 import '../services/webdav_service.dart';
 import '../pages/login_page.dart';
 import '../utils/utils.dart';
@@ -48,6 +52,8 @@ class AccountListPageState extends State<AccountListPage> {
 
   Set<String> _globalTags = {}; // 用于自动补全提示
   List<String> _tempTags = []; // 临时标签集
+
+  String _iconDirPath = ""; // 缓存路径字符串
 
   // 排序依据
   String _sortBy = 'platform'; // platform/last_modified
@@ -95,7 +101,7 @@ class AccountListPageState extends State<AccountListPage> {
     _sortBy = _settings.get('sort_by', defaultValue: 'platform')!;
     _isAscending =
         _settings.get('sort_ascending', defaultValue: 'true') == 'true';
-
+    _prepareIconPath();
     _checkDbStatus();
     refreshAccountList();
   }
@@ -147,6 +153,14 @@ class AccountListPageState extends State<AccountListPage> {
       _globalTags = data.expand((acc) => acc.tags).toSet(); // tags列表展开并去重
       // 刷新时根据当前搜索框内容过滤
       _filterAccounts(_searchController.text);
+    });
+  }
+
+  // 目录路径预取
+  Future<void> _prepareIconPath() async {
+    final directory = await getApplicationSupportDirectory();
+    setState(() {
+      _iconDirPath = p.join(directory.path, 'vault_icons');
     });
   }
 
@@ -854,24 +868,28 @@ class AccountListPageState extends State<AccountListPage> {
     }
   }
 
-  // 构建详情面板顶部的平台大图标/占位符
-  Widget _buildLargeLogo(Account account) {
-    final Color color = _getStatusColor(account.status);
+  // 构建统一卡片图标的首字母占位符
+  Widget _buildPlaceholder(
+    String platform,
+    Color statusColor,
+    double size, // 方块边长
+    double fontSize, // 字母大小
+    double borderRadius,
+  ) {
     return Container(
-      width: 64,
-      height: 64,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
-        // 背景色采用状态色的极浅透明版本
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.2), width: 1.5),
+        color: statusColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: Border.all(color: statusColor.withValues(alpha: 0.2), width: 1),
       ),
       child: Center(
         child: Text(
-          account.platform.isNotEmpty ? account.platform[0].toUpperCase() : "?",
+          platform.isNotEmpty ? platform[0].toUpperCase() : "?",
           style: TextStyle(
-            color: color,
-            fontSize: 28,
+            color: statusColor,
+            fontSize: fontSize,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -879,22 +897,61 @@ class AccountListPageState extends State<AccountListPage> {
     );
   }
 
+  // 构建详情面板顶部的平台大图标/占位符
+  Widget _buildLargeLogo(Account account) {
+    final Color color = _getStatusColor(account.status);
+    final String iconPath = p.join(_iconDirPath, "${account.id}.png");
+    final File iconFile = File(iconPath);
+    // 本地文件已存在，直接渲染图片
+    if (iconFile.existsSync()) {
+      return Container(
+        width: 64,
+        height: 64,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.2), width: 1.5),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: Image.file(
+            iconFile,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) =>
+                _buildPlaceholder(account.platform, color, 64, 28, 16),
+          ),
+        ),
+      );
+    }
+    // 抓取期间/无网址时显示首字母占位符
+    return _buildPlaceholder(account.platform, color, 64, 28, 16);
+  }
+
   // 构建卡片左侧的平台小图标/占位符
   Widget _buildSmallLogo(Account acc, Color color) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+    final String iconPath = p.join(_iconDirPath, "${acc.id}.png");
+    final File iconFile = File(iconPath);
+    // 本地文件已存在，直接渲染图片
+    if (iconFile.existsSync()) {
+      return ClipRRect(
         borderRadius: BorderRadius.circular(8),
-      ),
-      child: Center(
-        child: Text(
-          acc.platform[0].toUpperCase(),
-          style: TextStyle(color: color, fontWeight: FontWeight.bold),
+        child: Image.file(
+          iconFile,
+          width: 40,
+          height: 40,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) =>
+              _buildPlaceholder(acc.platform, color, 40, 18, 8), // 防御性处理
         ),
-      ),
-    );
+      );
+    }
+    // 本地不存在且有网址，发起后台静默抓取
+    if (acc.url.isNotEmpty) {
+      IconService().fetchAndCacheIcon(acc.id, acc.url).then((_) {
+        if (mounted) setState(() {}); // 抓取成功后刷新UI
+      });
+    }
+    // 抓取期间/无网址时显示首字母占位符
+    return _buildPlaceholder(acc.platform, color, 40, 18, 8);
   }
 
   // 构建账户卡片组件

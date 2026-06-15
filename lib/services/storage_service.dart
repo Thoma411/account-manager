@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-11 15:58:50
+ * @LastEditTime: 2026-06-15 16:47:55
  * @Description: 与SQLite交互的方法
  */
 
@@ -12,6 +12,7 @@ import 'dart:io';
 
 import '../models/account.dart';
 import 'settings_service.dart';
+import 'icon_service.dart';
 
 class StorageService {
   static final StorageService _instance = StorageService._internal();
@@ -121,9 +122,10 @@ class StorageService {
     final db = await database;
     await db.delete(
       'accounts',
-      where: 'id = ?', // 根据唯一 ID 删除
+      where: 'id = ?', // 根据唯一ID删除
       whereArgs: [id],
     );
+    await IconService().deleteIcon(id); // 删除对应图标(若有)
     await _incrementRevision();
   }
 
