@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-04-13 18:19:04
- * @LastEditTime: 2026-06-01 22:48:41
+ * @LastEditTime: 2026-06-15 21:09:20
  * @Description: webdav
  */
 
@@ -12,6 +12,7 @@ import 'package:http/http.dart' as http;
 import 'package:webdav_client/webdav_client.dart' as dav;
 
 import 'settings_service.dart';
+import 'storage_service.dart';
 
 class WebDavService {
   static final WebDavService _instance = WebDavService._internal();
@@ -143,12 +144,38 @@ class WebDavService {
     return res.headers['etag']?.replaceAll('"', '') ?? "";
   }
 
-  // 统一处理 HTTP PUT/GET 逻辑
+  // 执行静默安全上传
+  Future<bool> uploadIfSafe() async {
+    try {
+      final decision = await compareVersions();
+      // 仅在本地较新或云端没备份时才自动上传
+      if (decision == SyncDecision.localNewer ||
+          decision == SyncDecision.noRemote) {
+        final path = await StorageService().getDatabasePath();
+        String etag = await uploadVault(path);
+        // 同步成功后更新锚点
+        final s = SettingsService();
+        String? localRev = s.get('local_revision', defaultValue: '0');
+        await s.set('last_synced_revision', localRev!);
+        await s.set('last_synced_etag', etag);
+        debugPrint("AutoSync: 退出前备份成功");
+        return true;
+      } else {
+        debugPrint("AutoSync: $decision 放弃自动上传");
+        return false;
+      }
+    } catch (e) {
+      debugPrint("AutoSync: 退出同步异常: $e");
+      return false;
+    }
+  }
+
+  // 统一处理HTTP-PUT/GET逻辑
   Future<http.Response> _doHttpRequest({
     required String method,
     required String localPath,
   }) async {
-    // 此时 _currentXXX 必不为空，因为 _ensureClient 已经执行过
+    // _ensureClient已经执行过，此时_currentXXX必不为空
     final auth =
         'Basic ${base64.encode(utf8.encode('$_currentUser:$_currentPwd'))}';
     final targetUri = Uri.parse('${_currentUrl!}vault_keeper/vault_keeper.db');

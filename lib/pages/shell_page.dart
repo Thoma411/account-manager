@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-15 19:06:13
+ * @LastEditTime: 2026-06-15 21:06:56
  * @Description: 主框架
  */
 
@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'account_list_page.dart';
 import '../models/account.dart';
@@ -31,7 +32,7 @@ class ShellPage extends StatefulWidget {
   State<ShellPage> createState() => _ShellPageState();
 }
 
-class _ShellPageState extends State<ShellPage> {
+class _ShellPageState extends State<ShellPage> with WindowListener {
   int _selectedIndex = 0;
 
   final GlobalKey<AccountListPageState> _accountListPageKey =
@@ -41,10 +42,12 @@ class _ShellPageState extends State<ShellPage> {
       GlobalKey<SettingsPageState>();
   late List<Widget> _pages;
 
-  // 页面列表
   @override
   void initState() {
     super.initState();
+    windowManager.addListener(this); // 注册窗口监听
+    windowManager.setPreventClose(true); // 接管关闭按钮
+    // 页面列表
     _pages = [
       AccountListPage(key: _accountListPageKey), // index0
       SyncPage(key: _syncPageKey), // index1
@@ -54,6 +57,31 @@ class _ShellPageState extends State<ShellPage> {
             _accountListPageKey.currentState?.refreshAccountList(),
       ), // index2
     ];
+  }
+
+  @override
+  void dispose() {
+    windowManager.removeListener(this); // 销毁监听
+    super.dispose();
+  }
+
+  // 重写关闭应用窗口
+  @override
+  void onWindowClose() async {
+    final s = SettingsService();
+    bool isAutoSync = s.get('auto_sync_on_close') == 'true';
+    try {
+      // 如果开启了自动同步且数据库已解锁
+      if (isAutoSync && SecurityService().currentDataKey != null) {
+        await WebDavService().uploadIfSafe();
+      }
+    } catch (_) {
+      // 即使同步报错也要允许关闭
+    } finally {
+      // 彻底释放资源并销毁窗口结束进程
+      await StorageService().closeDatabase();
+      await windowManager.destroy();
+    }
   }
 
   @override
@@ -509,6 +537,7 @@ class SettingsPageState extends State<SettingsPage> {
   bool _isDarkMode = false; // 深色模式
   bool _hasDb = false; // 控制WebDAV按钮
   bool _autoFetchIcons = false; // 自动抓取图标
+  bool _autoSyncOnClose = false; // 退出时自动同步
 
   @override
   void initState() {
@@ -516,6 +545,7 @@ class SettingsPageState extends State<SettingsPage> {
     // 从已经loadSettings加载好的缓存中获取值
     _isDarkMode = _settings.get('dark_mode') == 'true';
     _autoFetchIcons = _settings.get('auto_fetch_icons') == 'true';
+    _autoSyncOnClose = _settings.get('auto_sync_on_close') == 'true';
     checkDbStatus();
   }
 
@@ -529,6 +559,12 @@ class SettingsPageState extends State<SettingsPage> {
   void _toggleAutoFetch(bool value) async {
     setState(() => _autoFetchIcons = value);
     await _settings.set('auto_fetch_icons', value.toString());
+  }
+
+  // 切换退出时自动同步
+  void _toggleAutoSync(bool value) async {
+    setState(() => _autoSyncOnClose = value);
+    await _settings.set('auto_sync_on_close', value.toString());
   }
 
   // 清除缓存图标
@@ -946,7 +982,7 @@ class SettingsPageState extends State<SettingsPage> {
   }
 
   // 登出保险箱
-  void _handleLogout() {
+  void _handleLogout() async {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -959,6 +995,9 @@ class SettingsPageState extends State<SettingsPage> {
           ),
           TextButton(
             onPressed: () async {
+              if (_settings.get('auto_sync_on_close') == 'true') {
+                await WebDavService().uploadIfSafe();
+              }
               SecurityService().clearKeys(); // 清空内存中的DK
               await StorageService().closeDatabase(); // 关闭db连接并重置句柄
               if (!context.mounted) return;
@@ -989,7 +1028,7 @@ class SettingsPageState extends State<SettingsPage> {
           "通用",
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 10),
         SwitchListTile(
           title: const Text("深色模式"),
           // subtitle: const Text("测试配置持久化架构"),
@@ -1025,6 +1064,14 @@ class SettingsPageState extends State<SettingsPage> {
           leading: const Icon(Icons.cloud_queue),
           enabled: _hasDb,
           onTap: _hasDb ? _showWebDavDialog : null,
+        ),
+        const Divider(),
+        SwitchListTile(
+          title: const Text("退出时自动备份"),
+          subtitle: const Text("在退出登录或关闭应用时，若本地较新则同步至云端"),
+          secondary: const Icon(Icons.sync_outlined),
+          value: _autoSyncOnClose,
+          onChanged: _hasDb ? _toggleAutoSync : null,
         ),
         const Divider(),
         ListTile(
