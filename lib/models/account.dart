@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 21:55:09
- * @LastEditTime: 2026-06-15 19:04:49
+ * @LastEditTime: 2026-06-16 20:42:55
  * @Description: 13字段实体定义
  */
 
@@ -59,6 +59,13 @@ class Account {
       separator: "",
       format: PinyinFormat.WITHOUT_TONE,
     ).toLowerCase(); // 中文->拼音
+  }
+
+  // 获取平台名的首字母
+  String get firstLetter {
+    if (platformPinyin.isEmpty) return "#";
+    String char = platformPinyin[0].toUpperCase();
+    return RegExp(r'[A-Z]').hasMatch(char) ? char : "#";
   }
 
   // 转换为数据库存储的Map

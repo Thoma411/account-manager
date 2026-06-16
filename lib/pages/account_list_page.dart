@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-15 19:04:42
+ * @LastEditTime: 2026-06-16 21:26:17
  * @Description: 账户信息页(查看页)
  */
 
@@ -58,6 +58,9 @@ class AccountListPageState extends State<AccountListPage> {
   // 排序依据
   String _sortBy = 'platform'; // platform/last_modified
   bool _isAscending = true; // 默认升序
+  // 字母索引导航栏
+  final Map<String, int> _alphabetIndexMap = {}; // 存储{字母:Index}
+  final ScrollController _scrollController = ScrollController(); // 控制跳转
 
   bool _isEditing = false; // 是否正在编辑
   final _formKey = GlobalKey<FormState>();
@@ -210,6 +213,13 @@ class AccountListPageState extends State<AccountListPage> {
         }
         return _isAscending ? cmp : -cmp;
       });
+      // 字母索引导航栏
+      _alphabetIndexMap.clear();
+      for (int i = 0; i < results.length; i++) {
+        String char = results[i].firstLetter;
+        // 记录该字母首次出现的位置
+        if (!_alphabetIndexMap.containsKey(char)) _alphabetIndexMap[char] = i;
+      }
       _displayAccounts = results;
     });
   }
@@ -340,12 +350,23 @@ class AccountListPageState extends State<AccountListPage> {
                     Expanded(
                       child: (!_isDbCreated || _allAccounts.isEmpty)
                           ? _buildEmptyStateUI() // 当且仅当未建库/内容为空时显示引导
-                          : ListView.builder(
-                              itemCount: _displayAccounts.length,
-                              itemBuilder: (context, index) {
-                                final acc = _displayAccounts[index];
-                                return _buildAccountCard(acc, index);
-                              },
+                          : Row(
+                              children: [
+                                _buildAlphabetIndexBar(), // 左侧: 字母索引导航栏
+                                Expanded(
+                                  child: ListView.builder(
+                                    controller: _scrollController,
+                                    itemCount: _displayAccounts.length,
+                                    itemExtent: 68.0, // Container高度60 + 上下边距4*2
+                                    itemBuilder: (context, index) {
+                                      return _buildAccountCard(
+                                        _displayAccounts[index],
+                                        index,
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
                             ),
                     ),
                   ],
@@ -534,6 +555,83 @@ class AccountListPageState extends State<AccountListPage> {
         ),
       ],
     );
+  }
+
+  // 构建字母索引导航栏
+  Widget _buildAlphabetIndexBar() {
+    const List<String> alphabet = [
+      '#',
+      'A',
+      'B',
+      'C',
+      'D',
+      'E',
+      'F',
+      'G',
+      'H',
+      'I',
+      'J',
+      'K',
+      'L',
+      'M',
+      'N',
+      'O',
+      'P',
+      'Q',
+      'R',
+      'S',
+      'T',
+      'U',
+      'V',
+      'W',
+      'X',
+      'Y',
+      'Z',
+    ];
+    return Container(
+      width: 25, // 宽度
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: alphabet.map((char) {
+          bool hasData = _alphabetIndexMap.containsKey(char);
+          return Expanded(
+            child: InkWell(
+              onTap: !hasData ? null : () => _jumpToSection(char),
+              child: Center(
+                child: Text(
+                  char,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: hasData
+                        ? Colors.blue
+                        : Colors.grey.withValues(alpha: 0.3),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  // 字母索引导航栏跳转逻辑
+  void _jumpToSection(String char) {
+    // 检查控制器是否已绑定到活跃的ScrollView
+    if (!_scrollController.hasClients) {
+      debugPrint("ScrollController 尚未绑定到 ListView");
+      return;
+    }
+    final int? index = _alphabetIndexMap[char];
+    if (index != null) {
+      final double targetOffset = index * 68.0; // 计算位置(假设itemExtent为68.0)
+      // 3检查目标位置是否合法(不超出最大滚动范围)
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      final finalOffset = targetOffset > maxScroll ? maxScroll : targetOffset;
+      _scrollController.jumpTo(finalOffset);
+    }
   }
 
   // 构建标题栏(条目属性)
