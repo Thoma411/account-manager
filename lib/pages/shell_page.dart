@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-17 19:07:08
+ * @LastEditTime: 2026-06-17 21:03:49
  * @Description: 主框架
  */
 
@@ -1317,8 +1317,7 @@ class SyncPageState extends State<SyncPage> {
               setState(() {
                 _logs.clear();
               });
-              // 写入一个空的 JSON 数组到数据库
-              await _settings.set('sync_history_json', '[]');
+              await _settings.set('sync_history_json', '[]'); // 置空列表
               if (!context.mounted) return;
               Navigator.pop(context);
               MessageUtil.show(context, "日志已清空");

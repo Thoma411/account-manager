@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-17 18:30:52
+ * @LastEditTime: 2026-06-17 21:31:09
  * @Description: 账户信息页(查看页)
  */
 
@@ -312,9 +312,9 @@ class AccountListPageState extends State<AccountListPage> {
 
   @override
   Widget build(BuildContext context) {
-    const double panelWidth = 400; // 定义侧栏宽度
+    const double panelWidth = 400; // 定义详情页宽度
     const double headerHeight = 70.0; // 搜索框高度
-    const double listTopGap = 15.0; // 搜索框与卡片列表的间距
+    const double listTopGap = 3.0; // 搜索框与卡片列表的间距
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
@@ -364,7 +364,7 @@ class AccountListPageState extends State<AccountListPage> {
                                           controller: _scrollController,
                                           padding: const EdgeInsets.only(
                                             top: listTopGap,
-                                            bottom: 20,
+                                            bottom: 8,
                                           ),
                                           itemCount: _displayAccounts.length,
                                           itemExtent:
@@ -380,7 +380,38 @@ class AccountListPageState extends State<AccountListPage> {
                                     ],
                                   ),
                           ),
-                          // const SizedBox(height: 10),
+                          // 底栏
+                          Container(
+                            height: 25,
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface,
+                              border: Border(
+                                top: BorderSide(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.outlineVariant,
+                                  width: 0.6,
+                                ),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Text(
+                                  "共计 ${_displayAccounts.length} 条账户",
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                const SizedBox(width: 20), // 右边距
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -390,6 +421,7 @@ class AccountListPageState extends State<AccountListPage> {
                       left: 0,
                       right: 0,
                       child: Container(
+                        height: headerHeight,
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.surface, // 设置背景色
                           boxShadow: [
