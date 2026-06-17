@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-15 22:52:15
+ * @LastEditTime: 2026-06-17 16:13:22
  * @Description: 主框架
  */
 
@@ -15,6 +15,7 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../main.dart';
 import 'account_list_page.dart';
 import '../models/account.dart';
 import '../services/storage_service.dart';
@@ -104,9 +105,13 @@ class _ShellPageState extends State<ShellPage> with WindowListener {
                 selectedIndex: _selectedIndex,
                 onDestinationSelected: _onDestinationSelected,
                 labelType: NavigationRailLabelType.all,
-                leading: const Padding(
+                leading: Padding(
                   padding: EdgeInsets.symmetric(vertical: 20),
-                  child: Icon(Icons.shield, size: 40, color: Colors.blue),
+                  child: Icon(
+                    Icons.shield,
+                    size: 40,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
                 destinations: const [
                   NavigationRailDestination(
@@ -139,6 +144,10 @@ class _ShellPageState extends State<ShellPage> with WindowListener {
                 // 仅在主页显示刷新，或者全局显示用于强制重载所有数据
                 FloatingActionButton.small(
                   heroTag: "refresh_list_global",
+                  elevation: 1, // 默认阴影
+                  focusElevation: 0, // 聚焦阴影
+                  hoverElevation: 0, // 鼠标悬停阴影
+                  highlightElevation: 0, // 点击阴影
                   onPressed: () {
                     // 分别刷新对应的状态
                     if (_selectedIndex == 0) {
@@ -148,17 +157,26 @@ class _ShellPageState extends State<ShellPage> with WindowListener {
                       _syncPageKey.currentState?.refreshStatus();
                     }
                   },
-                  backgroundColor: Colors.white,
-                  child: const Icon(
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainer,
+                  child: Icon(
                     Icons.refresh,
-                    color: Colors.blueGrey,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     size: 20,
                   ),
                 ),
                 const SizedBox(height: 12),
                 FloatingActionButton(
                   heroTag: "add_account_fab",
+                  elevation: 1,
+                  focusElevation: 0,
+                  hoverElevation: 0,
+                  highlightElevation: 0,
                   onPressed: _showAddAccountDialog,
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer,
                   child: const Icon(Icons.add),
                 ),
               ],
@@ -241,6 +259,7 @@ class _ShellPageState extends State<ShellPage> with WindowListener {
                       mainAxisSize: MainAxisSize.min, // 紧凑布局
                       children: [
                         // 关键信息
+                        SizedBox(height: devideH / 2),
                         TextFormField(
                           decoration: const InputDecoration(labelText: "平台名称*"),
                           validator: (v) =>
@@ -575,6 +594,7 @@ class SettingsPageState extends State<SettingsPage> {
   void _toggleDarkMode(bool value) async {
     setState(() => _isDarkMode = value);
     await _settings.set('dark_mode', value.toString()); // 异步存入数据库
+    themeNotifier.value = value ? ThemeMode.dark : ThemeMode.light;
   }
 
   // 切换自动抓取图标
@@ -648,9 +668,12 @@ class SettingsPageState extends State<SettingsPage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               "建议使用坚果云等支持WebDAV的网盘。同步数据将以加密形式上传。",
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 20),
             TextField(
@@ -718,13 +741,16 @@ class SettingsPageState extends State<SettingsPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("导出安全警告"),
-        content: const Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start, // 左对齐
           children: [
             Text(
               "导出操作会将您的所有账户密码以【明文】形式保存为 CSV 文件。",
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             SizedBox(height: 10),
             Text("任何人打开此文件均可见您的敏感信息，请在安全的环境下操作，并在使用后妥善保管或销毁该文件。"),
@@ -748,8 +774,8 @@ class SettingsPageState extends State<SettingsPage> {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              foregroundColor: Colors.white,
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
             ),
             child: const Text("确认导出"),
           ),
@@ -785,19 +811,22 @@ class SettingsPageState extends State<SettingsPage> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 "这是您找回数据的唯一凭证，请勿泄露给他人。",
-                style: TextStyle(fontSize: 14, color: Colors.grey),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: 20),
               SelectableText(
                 rk,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Consolas',
                   fontFamilyFallback: ['Microsoft YaHei'],
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.blue,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
             ],
@@ -848,8 +877,8 @@ class SettingsPageState extends State<SettingsPage> {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              foregroundColor: Colors.white,
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
             ),
             child: const Text("确认重置"),
           ),
@@ -868,18 +897,21 @@ class SettingsPageState extends State<SettingsPage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               "原恢复密钥已丢弃，请妥善保存新恢复密钥：",
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 20),
             SelectableText(
               rk,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Consolas',
                 fontFamilyFallback: ['Microsoft YaHei'],
                 fontWeight: FontWeight.bold,
-                color: Colors.blue,
+                color: Theme.of(context).colorScheme.primary,
                 fontSize: 16,
               ),
             ),
@@ -912,9 +944,12 @@ class SettingsPageState extends State<SettingsPage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               "修改主密码后将强制退出，请使用新主密码重新登录。",
-              style: TextStyle(fontSize: 12, color: Colors.redAccent),
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.error,
+              ),
             ),
             const SizedBox(height: 20),
             TextField(
@@ -1027,9 +1062,9 @@ class SettingsPageState extends State<SettingsPage> {
               ); // 踢回解锁页并销毁当前所有UI栈
               MessageUtil.show(context, "保险箱已锁定");
             },
-            child: const Text(
+            child: Text(
               "确认退出",
-              style: TextStyle(color: Colors.redAccent),
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
           ),
         ],
@@ -1040,6 +1075,7 @@ class SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final bool isLoggedIn = _hasDb && SecurityService().currentDataKey != null;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return ListView(
       padding: const EdgeInsets.all(24),
@@ -1173,13 +1209,17 @@ class SettingsPageState extends State<SettingsPage> {
               onPressed: isLoggedIn ? _handleLogout : null,
               icon: Icon(
                 Icons.logout_rounded,
-                color: isLoggedIn ? Colors.redAccent : Colors.grey,
+                color: isLoggedIn
+                    ? colorScheme.error
+                    : colorScheme.onSurfaceVariant.withValues(alpha: 0.38),
                 size: 20,
               ),
               label: Text(
                 "退出登录并锁定保险箱",
                 style: TextStyle(
-                  color: isLoggedIn ? Colors.redAccent : Colors.grey,
+                  color: isLoggedIn
+                      ? colorScheme.error
+                      : colorScheme.onSurfaceVariant.withValues(alpha: 0.38),
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1,
                 ),
@@ -1189,10 +1229,12 @@ class SettingsPageState extends State<SettingsPage> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 side: BorderSide(
-                  color: isLoggedIn ? Colors.redAccent : Colors.grey,
+                  color: isLoggedIn
+                      ? colorScheme.error
+                      : colorScheme.onSurfaceVariant.withValues(alpha: 0.38),
                   width: 1.5,
                 ),
-                foregroundColor: Colors.redAccent,
+                foregroundColor: colorScheme.error,
               ),
             ),
           ),
@@ -1348,7 +1390,10 @@ class SyncPageState extends State<SyncPage> {
               Navigator.pop(context);
               onConfirmLocal();
             },
-            child: const Text("保留本地 (上传)", style: TextStyle(color: Colors.red)),
+            child: Text(
+              "保留本地 (上传)",
+              style: TextStyle(color: Theme.of(context).colorScheme.onError),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1389,6 +1434,7 @@ class SyncPageState extends State<SyncPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.all(32.0),
       child: Column(
@@ -1399,7 +1445,6 @@ class SyncPageState extends State<SyncPage> {
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 24),
-
           // 顶部对比卡片
           Row(
             children: [
@@ -1408,7 +1453,7 @@ class SyncPageState extends State<SyncPage> {
                 Icons.computer,
                 _localTime,
                 _localSize,
-                Colors.blue,
+                colorScheme.primary,
               ),
               _buildSyncIndicator(),
               _buildStatusCard(
@@ -1416,13 +1461,11 @@ class SyncPageState extends State<SyncPage> {
                 Icons.cloud_done,
                 _remoteTime,
                 _remoteSize,
-                Colors.blue,
+                colorScheme.primary,
               ),
             ],
           ),
-
           const SizedBox(height: 32),
-
           // 下方: 左操作, 右日志
           Expanded(
             child: Row(
@@ -1441,19 +1484,20 @@ class SyncPageState extends State<SyncPage> {
                         onPressed: _handleSmartSync,
                       ),
                       const SizedBox(height: 12),
-                      const Text(
+                      Text(
                         "系统将根据修改时间自动决定上传或下载",
-                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
                       ),
                       const SizedBox(height: 32),
-
                       _buildActionButton(
                         label: "测试云端连接",
                         icon: Icons.lan_outlined,
                         onPressed: _handlePing,
                       ),
                       const SizedBox(height: 12),
-
                       Row(
                         children: [
                           Expanded(
@@ -1482,29 +1526,32 @@ class SyncPageState extends State<SyncPage> {
                   flex: 3,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .surfaceContainerHighest
-                          .withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: Colors.grey.withValues(alpha: 0.2),
+                      color: colorScheme.surfaceContainerHighest.withValues(
+                        alpha: 0.3,
                       ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: colorScheme.outlineVariant),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Padding(
+                        Padding(
                           padding: EdgeInsets.all(16.0),
                           child: Row(
                             children: [
-                              Icon(Icons.history, size: 18, color: Colors.grey),
+                              Icon(
+                                Icons.history,
+                                size: 18,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
                               SizedBox(width: 8),
                               Text(
                                 "同步日志",
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.grey,
+                                  color: colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ],
@@ -1568,17 +1615,27 @@ class SyncPageState extends State<SyncPage> {
     VoidCallback? onPressed,
     bool isPrimary = false,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     return SizedBox(
       width: double.infinity,
       height: 50,
       child: isPrimary
           ? FilledButton.icon(
               onPressed: onPressed,
+              style: FilledButton.styleFrom(
+                elevation: 1,
+                backgroundColor: colorScheme.primaryContainer,
+                foregroundColor: colorScheme.onPrimaryContainer,
+              ),
               icon: Icon(icon, size: 18),
               label: Text(label),
             )
           : OutlinedButton.icon(
               onPressed: onPressed,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: colorScheme.onPrimaryContainer, // 与主按钮文字色对齐
+                side: BorderSide(color: colorScheme.outlineVariant), // 同时淡化边框
+              ),
               icon: Icon(icon, size: 16),
               label: Text(label, style: const TextStyle(fontSize: 13)),
             ),
@@ -1607,8 +1664,13 @@ class SyncPageState extends State<SyncPage> {
   // 构建日志列表
   Widget _buildLogList() {
     if (_logs.isEmpty) {
-      return const Center(
-        child: Text("暂无历史记录", style: TextStyle(color: Colors.grey)),
+      return Center(
+        child: Text(
+          "暂无历史记录",
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
       );
     }
     return ListView.builder(
@@ -1620,7 +1682,7 @@ class SyncPageState extends State<SyncPage> {
           leading: Icon(
             _getLogIcon(log['action']),
             size: 16,
-            color: Colors.blueGrey,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
           title: Text("${log['action']} - ${log['status']}"),
           subtitle: Text(DateUtil.format(log['time'])),
@@ -1644,11 +1706,15 @@ class SyncPageState extends State<SyncPage> {
     int? size,
     Color color,
   ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    String timeStr = time != null
+        ? DateUtil.format(time.toIso8601String())
+        : "无记录";
     return Expanded(
       child: Card(
         elevation: 0,
         shape: RoundedRectangleBorder(
-          side: BorderSide(color: color.withValues(alpha: 0.2), width: 1),
+          side: BorderSide(color: colorScheme.outlineVariant, width: 1),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Padding(
@@ -1666,13 +1732,19 @@ class SyncPageState extends State<SyncPage> {
               ),
               const SizedBox(height: 8),
               Text(
-                time != null ? DateUtil.format(time.toIso8601String()) : "无记录",
-                style: const TextStyle(fontSize: 12, color: Colors.black54),
+                timeStr,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: colorScheme.onSurfaceVariant,
+                ),
               ),
               if (size != null)
                 Text(
                   "${(size / 1024).toStringAsFixed(1)} KB",
-                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
             ],
           ),
@@ -1691,7 +1763,11 @@ class SyncPageState extends State<SyncPage> {
               height: 24,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : const Icon(Icons.arrow_forward, size: 24, color: Colors.blue),
+          : Icon(
+              Icons.arrow_forward,
+              size: 24,
+              color: Theme.of(context).colorScheme.primary,
+            ),
     );
   }
 }

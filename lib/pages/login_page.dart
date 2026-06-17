@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-22 19:47:45
- * @LastEditTime: 2026-06-04 18:11:58
+ * @LastEditTime: 2026-06-17 15:30:25
  * @Description: 初始登入界面
  */
 
@@ -52,9 +52,12 @@ class _UnlockPageState extends State<UnlockPage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               "请输入您事先保存的恢复密钥 (RK)：",
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -187,12 +190,12 @@ class _UnlockPageState extends State<UnlockPage> {
             const SizedBox(height: 20),
             SelectableText(
               newRk,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Consolas',
                 fontFamilyFallback: ['Microsoft YaHei'],
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.blue,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
           ],
@@ -229,14 +232,23 @@ class _UnlockPageState extends State<UnlockPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.lock_outline, size: 64, color: Colors.blue),
+              Icon(
+                Icons.lock_outline,
+                size: 64,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               const SizedBox(height: 24),
               const Text(
                 "身份验证",
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
-              const Text("请输入主密码以解锁数据库", style: TextStyle(color: Colors.grey)),
+              Text(
+                "请输入主密码以解锁数据库",
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
               const SizedBox(height: 32),
               TextField(
                 controller: _passwordController,
@@ -257,9 +269,12 @@ class _UnlockPageState extends State<UnlockPage> {
               ),
               TextButton(
                 onPressed: _showForgotPasswordDialog,
-                child: const Text(
+                child: Text(
                   "忘记主密码？",
-                  style: TextStyle(color: Colors.grey, fontSize: 13),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 13,
+                  ),
                 ),
               ),
             ],

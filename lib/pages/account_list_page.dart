@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-16 21:26:17
+ * @LastEditTime: 2026-06-17 16:50:34
  * @Description: 账户信息页(查看页)
  */
 
@@ -260,7 +260,9 @@ class AccountListPageState extends State<AccountListPage> {
                   context,
                 ).showSnackBar(const SnackBar(content: Text("条目已成功删除")));
               },
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+              ),
               child: const Text("确定删除"),
             ),
           ],
@@ -340,12 +342,24 @@ class AccountListPageState extends State<AccountListPage> {
                 // 底层列表
                 Column(
                   children: [
-                    Row(
-                      children: [
-                        Expanded(child: _buildSearchBox()),
-                        _buildSortButton(), // 新增排序按钮函数
-                        const SizedBox(width: 16),
-                      ],
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface, // 设置背景色
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.2),
+                            offset: const Offset(0, 4), // 阴影向下偏移4px
+                            blurRadius: 10, // 模糊半径
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(child: _buildSearchBox()),
+                          _buildSortButton(), // 新增排序按钮函数
+                          const SizedBox(width: 16),
+                        ],
+                      ),
                     ),
                     Expanded(
                       child: (!_isDbCreated || _allAccounts.isEmpty)
@@ -380,7 +394,9 @@ class AccountListPageState extends State<AccountListPage> {
                     child: GestureDetector(
                       onTap: _closePanel,
                       child: Container(
-                        color: Colors.black.withValues(alpha: 0.3),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.2),
                       ),
                     ),
                   ),
@@ -401,7 +417,9 @@ class AccountListPageState extends State<AccountListPage> {
                         color: Theme.of(context).colorScheme.surface,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.1),
                             blurRadius: 20,
                             offset: const Offset(-5, 0),
                           ),
@@ -436,7 +454,11 @@ class AccountListPageState extends State<AccountListPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.shield_outlined, size: 80, color: Colors.blue),
+          Icon(
+            Icons.shield_outlined,
+            size: 80,
+            color: Theme.of(context).colorScheme.primary,
+          ),
           const SizedBox(height: 24),
           const Text(
             "欢迎使用 Vault Keeper",
@@ -445,7 +467,9 @@ class AccountListPageState extends State<AccountListPage> {
           const SizedBox(height: 12),
           Text(
             _isDbCreated ? "空空如也？请前往设置导入或点击'+'号添加账户" : "尚未初始化数据库，请选择操作以开始使用",
-            style: const TextStyle(color: Colors.grey),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 40),
 
@@ -513,7 +537,10 @@ class AccountListPageState extends State<AccountListPage> {
   // 构建排序选择按钮
   Widget _buildSortButton() {
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.sort_rounded, color: Colors.blueGrey),
+      icon: Icon(
+        Icons.sort_rounded,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
       tooltip: "排序依据",
       onSelected: (value) async {
         setState(() {
@@ -605,8 +632,10 @@ class AccountListPageState extends State<AccountListPage> {
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                     color: hasData
-                        ? Colors.blue
-                        : Colors.grey.withValues(alpha: 0.3),
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.15),
                   ),
                 ),
               ),
@@ -633,122 +662,6 @@ class AccountListPageState extends State<AccountListPage> {
       _scrollController.jumpTo(finalOffset);
     }
   }
-
-  // 构建标题栏(条目属性)
-  // Widget _buildAccountTable() {
-  //   return LayoutBuilder(
-  //     builder: (context, constraints) {
-  //       final double availableWidth =
-  //           constraints.maxWidth - 48; // 减去 DataTable 的 24*2 边距
-  //       final double col1 = availableWidth * 0.2;
-  //       final double col2 = availableWidth * 0.1;
-  //       final double col3 = availableWidth * 0.3;
-  //       final double col4 = availableWidth * 0.4; // 标签列可以稍微宽一点
-  //       return Column(
-  //         children: [
-  //           // 固定表头
-  //           Container(
-  //             height: 56,
-  //             decoration: BoxDecoration(
-  //               color: Theme.of(context).colorScheme.surface,
-  //               border: Border(
-  //                 bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
-  //               ),
-  //             ),
-  //             child: Row(
-  //               children: [
-  //                 const SizedBox(
-  //                   width: 24,
-  //                 ), // 关键：匹配 DataTable 的 horizontalMargin
-  //                 SizedBox(
-  //                   width: col1,
-  //                   child: const Text(
-  //                     '平台',
-  //                     style: TextStyle(fontWeight: FontWeight.w500),
-  //                   ),
-  //                 ),
-  //                 SizedBox(
-  //                   width: col2,
-  //                   child: const Text(
-  //                     '状态',
-  //                     style: TextStyle(fontWeight: FontWeight.w500),
-  //                   ),
-  //                 ),
-  //                 SizedBox(
-  //                   width: col3,
-  //                   child: const Text(
-  //                     '用户昵称',
-  //                     style: TextStyle(fontWeight: FontWeight.w500),
-  //                   ),
-  //                 ),
-  //                 SizedBox(
-  //                   width: col4,
-  //                   child: const Text(
-  //                     '标签',
-  //                     style: TextStyle(fontWeight: FontWeight.w500),
-  //                   ),
-  //                 ),
-  //                 const SizedBox(width: 24), // 尾部边距对齐
-  //               ],
-  //             ),
-  //           ),
-  //           // 滚动内容
-  //           Expanded(
-  //             child: SingleChildScrollView(
-  //               child: ConstrainedBox(
-  //                 constraints: BoxConstraints(minWidth: constraints.maxWidth),
-  //                 child: DataTable(
-  //                   horizontalMargin: 24, // 显式设定边距为 24
-  //                   headingRowHeight: 0,
-  //                   showCheckboxColumn: false,
-  //                   columnSpacing: 0, // 将列间距设为0，完全依靠 SizedBox 控制宽度
-  //                   columns: [
-  //                     DataColumn(label: SizedBox(width: col1)),
-  //                     DataColumn(label: SizedBox(width: col2)),
-  //                     DataColumn(label: SizedBox(width: col3)),
-  //                     DataColumn(label: SizedBox(width: col4)),
-  //                   ],
-  //                   rows: List<DataRow>.generate(_displayAccounts.length, (
-  //                     index,
-  //                   ) {
-  //                     final acc = _displayAccounts[index];
-  //                     return DataRow(
-  //                       selected: _selectedRowIndex == index,
-  //                       onSelectChanged: (selected) =>
-  //                           _onAccountSelected(index),
-  //                       cells: [
-  //                         DataCell(
-  //                           SizedBox(width: col1, child: Text(acc.platform)),
-  //                         ),
-  //                         DataCell(
-  //                           SizedBox(
-  //                             width: col2,
-  //                             child: _buildStatusChip(acc.status),
-  //                           ),
-  //                         ),
-  //                         DataCell(
-  //                           SizedBox(width: col3, child: Text(acc.name)),
-  //                         ),
-  //                         DataCell(
-  //                           SizedBox(
-  //                             width: col4,
-  //                             child: Text(
-  //                               acc.tags.isEmpty ? "-" : acc.tags.join(", "),
-  //                             ),
-  //                           ),
-  //                         ),
-  //                       ],
-  //                     );
-  //                   }),
-  //                 ),
-  //               ),
-  //             ),
-  //           ),
-  //         ],
-  //       );
-  //     },
-  //   );
-  // }
 
   // 构建详情面板的顶部区域
   Widget _buildDetailHeader(Account account) {
@@ -830,14 +743,17 @@ class AccountListPageState extends State<AccountListPage> {
             onPressed: _toggleEditMode,
             icon: Icon(
               _isEditing ? Icons.check_circle_outline : Icons.edit_note,
-              color: _isEditing ? Colors.blue : Colors.blue,
+              color: Theme.of(context).colorScheme.primary,
             ), // 编辑/保存切换按钮
             tooltip: _isEditing ? "保存修改" : "编辑信息",
           ),
           // 右侧关闭按钮
           IconButton(
             onPressed: _closePanel, // 调用State类中的关闭方法
-            icon: const Icon(Icons.close, color: Colors.grey),
+            icon: Icon(
+              Icons.close,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
             tooltip: "关闭面板",
           ),
         ],
@@ -1069,16 +985,14 @@ class AccountListPageState extends State<AccountListPage> {
     // c2-内容: 邮箱/手机
     IconData secondColIcon = Icons.alternate_email;
     String secondColText = "-";
-    Color secondColColor = Colors.grey[300]!;
+    Color secondColColor = Theme.of(context).colorScheme.onSurfaceVariant;
     // 决定第1/2列显示什么属性
     if (acc.email.isNotEmpty) {
       secondColIcon = Icons.email_outlined;
       secondColText = acc.email;
-      secondColColor = Colors.black54;
     } else if (acc.phone.isNotEmpty) {
       secondColIcon = Icons.phone_android_rounded; // 补全手机图标
       secondColText = acc.phone;
-      secondColColor = Colors.black54;
     }
 
     return Padding(
@@ -1089,12 +1003,12 @@ class AccountListPageState extends State<AccountListPage> {
         child: Container(
           height: 60, // 单个条目行高
           decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isSelected
-                  ? Colors.blue.withValues(alpha: 0.5)
-                  : Colors.black12,
+                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)
+                  : Theme.of(context).colorScheme.outlineVariant,
               width: isSelected ? 1.5 : 1,
             ),
           ),
@@ -1128,8 +1042,8 @@ class AccountListPageState extends State<AccountListPage> {
                         style: TextStyle(
                           fontSize: 11,
                           color: firstColSub == "-"
-                              ? Colors.grey[300]
-                              : Colors.grey[600],
+                              ? Theme.of(context).colorScheme.onSurface
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1146,7 +1060,7 @@ class AccountListPageState extends State<AccountListPage> {
                         size: 14,
                         color: secondColText == "-"
                             ? Colors.transparent
-                            : Colors.grey,
+                            : Theme.of(context).colorScheme.outline,
                       ),
                       const SizedBox(width: 6),
                       Expanded(
@@ -1176,16 +1090,19 @@ class AccountListPageState extends State<AccountListPage> {
                                     vertical: 2,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.blueGrey.withValues(
-                                      alpha: 0.08,
-                                    ),
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .secondaryContainer
+                                        .withValues(alpha: 0.4),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Text(
                                     t,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 11,
-                                      color: Colors.blueGrey,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSecondaryContainer,
                                     ),
                                   ),
                                 ),
@@ -1208,8 +1125,9 @@ class AccountListPageState extends State<AccountListPage> {
                           style: TextStyle(
                             fontFamily: 'Consolas',
                             color: isPasswordVisible
-                                ? Colors.blue
-                                : Colors.grey[400],
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.onSurfaceVariant
+                                      .withValues(alpha: 0.5),
                             fontSize: 14,
                             letterSpacing: isPasswordVisible ? 0.5 : 1.5,
                           ),
@@ -1298,17 +1216,21 @@ class AccountListPageState extends State<AccountListPage> {
                 // 按钮操作区
                 OutlinedButton.icon(
                   onPressed: () => _confirmDelete(account),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.delete_forever,
-                    color: Colors.redAccent,
+                    color: Theme.of(context).colorScheme.error,
                   ),
-                  label: const Text(
+                  label: Text(
                     "删除此条目",
-                    style: TextStyle(color: Colors.redAccent),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 50),
-                    side: const BorderSide(color: Colors.redAccent),
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -1330,7 +1252,13 @@ class AccountListPageState extends State<AccountListPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+          Text(
+            label,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 12,
+            ),
+          ),
           const SizedBox(height: 4),
           Text(
             value,
@@ -1357,7 +1285,13 @@ class AccountListPageState extends State<AccountListPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 11)),
+          Text(
+            label,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 11,
+            ),
+          ),
           const SizedBox(height: 4),
           if (!_isEditing) // 只读状态
             Container(
@@ -1390,14 +1324,17 @@ class AccountListPageState extends State<AccountListPage> {
                   contentPadding: EdgeInsets.zero, // 彻底消除内边距
                   border: InputBorder.none, // 编辑时也隐藏下划线，保持清爽
                   focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Colors.blue, width: 1),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 1,
+                    ),
                   ), // 仅在聚焦时显示下划线
                   suffixIcon: isDateField
                       ? IconButton(
                           icon: Icon(
                             Icons.calendar_today,
                             size: 16,
-                            color: Colors.blue,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                           onPressed: () => _pickDate(context, controller),
                           padding: EdgeInsets.zero,
@@ -1418,14 +1355,22 @@ class AccountListPageState extends State<AccountListPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+          Text(
+            label,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 12,
+            ),
+          ),
           InkWell(
             onTap: url.isEmpty ? null : () => launchUrl(Uri.parse(url)),
             child: Text(
-              url.isEmpty ? "未填写" : url,
+              url.isEmpty ? "-" : url,
               style: TextStyle(
                 fontSize: 14,
-                color: url.isEmpty ? Colors.black87 : Colors.blue,
+                color: url.isEmpty
+                    ? Theme.of(context).colorScheme.onSurface
+                    : Theme.of(context).colorScheme.primary,
                 decoration: url.isEmpty ? null : TextDecoration.underline,
               ),
             ),
@@ -1443,7 +1388,13 @@ class AccountListPageState extends State<AccountListPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("密码", style: TextStyle(color: Colors.grey, fontSize: 11)),
+          Text(
+            "密码",
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 11,
+            ),
+          ),
           const SizedBox(height: 4),
           Row(
             children: [
@@ -1490,10 +1441,10 @@ class AccountListPageState extends State<AccountListPage> {
               // 根据_isEditing状态切换组件
               if (!_isEditing) // 复制按钮仅在非编辑模式下显示
                 IconButton(
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.copy_all_rounded,
                     size: 18,
-                    color: Colors.blueGrey,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   onPressed: () {
                     Clipboard.setData(
@@ -1521,9 +1472,12 @@ class AccountListPageState extends State<AccountListPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           "标签 (回车切分)",
-          style: TextStyle(color: Colors.grey, fontSize: 11),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontSize: 11,
+          ),
         ),
         const SizedBox(height: 8),
         // 标签展示与输入区
@@ -1531,11 +1485,17 @@ class AccountListPageState extends State<AccountListPage> {
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: _isEditing
-                ? Colors.grey.withValues(alpha: 0.05)
+                ? Theme.of(
+                    context,
+                  ).colorScheme.onSurfaceVariant.withValues(alpha: 0.05)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
             border: _isEditing
-                ? Border.all(color: Colors.blue.withValues(alpha: 0.3))
+                ? Border.all(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.3),
+                  )
                 : null,
           ),
           child: Wrap(
@@ -1629,10 +1589,15 @@ class AccountListPageState extends State<AccountListPage> {
               (s) => ActionChip(
                 label: Text(
                   s,
-                  style: const TextStyle(fontSize: 11, color: Colors.blue),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
                 onPressed: () => _addNewTag(s),
-                backgroundColor: Colors.blue.withValues(alpha: 0.05),
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.05),
               ),
             )
             .toList(),
@@ -1929,12 +1894,12 @@ class AccountListPageState extends State<AccountListPage> {
             const SizedBox(height: 20),
             SelectableText(
               rk,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Consolas',
                 fontFamilyFallback: ['Microsoft YaHei'],
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.blue,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
           ],

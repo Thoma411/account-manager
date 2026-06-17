@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-09 23:51:46
- * @LastEditTime: 2026-04-13 17:07:13
+ * @LastEditTime: 2026-06-17 15:55:56
  * @Description: main
  */
 
@@ -13,6 +13,9 @@ import 'pages/login_page.dart';
 import 'pages/shell_page.dart';
 import 'services/storage_service.dart';
 import 'services/settings_service.dart';
+
+// 控制主题的变量
+final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // 确保Flutter引擎绑定
@@ -31,18 +34,20 @@ void main() async {
     titleBarStyle: TitleBarStyle.normal,
   );
 
-  // 这里不用 await，让它异步执行显示过程
   windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.show();
     await windowManager.focus();
   });
 
-  // 4. 探测本地数据库是否存在
-  // 注意：这里调用的是我们即将在 StorageService 中添加的方法
+  // 探测本地数据库是否存在
   final bool oldUser = await StorageService().isDatabaseExists();
 
-  // 5. 运行应用并传递状态
-  runApp(VaultApp(isOldUser: oldUser));
+  // 从配置中读取初始主题状态
+  final settings = SettingsService();
+  final isDark = settings.get('dark_mode') == 'true';
+  themeNotifier.value = isDark ? ThemeMode.dark : ThemeMode.light;
+
+  runApp(VaultApp(isOldUser: oldUser)); // 运行应用并传递状态
 }
 
 class VaultApp extends StatelessWidget {
@@ -51,108 +56,112 @@ class VaultApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeNotifier,
+      builder: (_, mode, _) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          themeMode: mode,
+          theme: _buildLightTheme(), // 浅色主题
+          darkTheme: _buildDarkTheme(), // 深色主题
+          // 根据是否为老用户进入不同的界面
+          home: isOldUser ? const UnlockPage() : const ShellPage(),
+        );
+      },
+    );
+  }
 
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
+  ThemeData _buildLightTheme() {
+    final colorScheme =
+        ColorScheme.fromSeed(
           seedColor: Colors.blue,
           brightness: Brightness.light,
-        ),
+        ).copyWith(
+          primary: Colors.blue, // 主题色
+          onSurfaceVariant: const Color.fromARGB(255, 81, 84, 90), // 副文字
+          outlineVariant: const Color(0xFFC4C6D0), // 边框
+          error: Colors.red,
+        );
+    return _buildBaseTheme(colorScheme);
+  }
 
-        fontFamily: 'Segoe UI', //设置主字体
-        // 遇到中文字符时按顺序寻找以下字体
-        fontFamilyFallback: const [
-          'Microsoft YaHei', // Windows 默认中文
-          'PingFang SC', // iOS/macOS 默认中文
-          'Hiragino Sans GB',
-          'sans-serif',
-        ],
-        // 增强文本渲染清晰度（针对 Windows）
-        typography: Typography.material2021(platform: TargetPlatform.windows),
-        textTheme: const TextTheme(
-          // 详情页的标签（如“平台名称”）使用较小、浅色的样式
-          labelSmall: TextStyle(
-            fontSize: 11,
-            letterSpacing: 0.5,
-            color: Colors.grey,
-            fontWeight: FontWeight.w500,
-          ),
-          // 主要正文（如账号内容）
-          bodyMedium: TextStyle(
-            fontSize: 14,
-            letterSpacing: 0.2,
-            color: Colors.black87,
-          ),
-        ),
+  ThemeData _buildDarkTheme() {
+    final colorScheme =
+        ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: Brightness.dark,
+        ).copyWith(
+          primary: const Color(0xFF82B1FF), // 主题色
+          onSurfaceVariant: const Color(0xFF8E9199), // 副文字
+          // surfaceContainer: Color.fromARGB(255, 47, 47, 49),
+        );
+    return _buildBaseTheme(colorScheme);
+  }
 
-        dataTableTheme: DataTableThemeData(
-          headingTextStyle: const TextStyle(
-            fontWeight: FontWeight.w500,
-            color: Colors.black87,
-            fontSize: 15,
-          ),
-          dataRowColor: WidgetStateProperty.resolveWith<Color?>((
-            Set<WidgetState> states,
-          ) {
-            // 当行被选中时
-            if (states.contains(WidgetState.selected)) {
-              return Colors.blue.withValues(alpha: 0.1);
-            }
-            // 当鼠标悬停在行上时
-            if (states.contains(WidgetState.hovered)) {
-              return Colors.grey.withValues(alpha: 0.05);
-            }
-            return null; // 默认颜色
-          }),
+  ThemeData _buildBaseTheme(ColorScheme colorScheme) {
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: colorScheme,
+      fontFamily: 'Segoe UI', //设置主字体
+      // 遇到中文字符时按顺序寻找以下字体
+      fontFamilyFallback: const [
+        'Microsoft YaHei', // Windows 默认中文
+        'PingFang SC', // iOS/macOS 默认中文
+        'Hiragino Sans GB',
+        'sans-serif',
+      ],
+      // 增强文本渲染清晰度（针对Windows）
+      typography: Typography.material2021(platform: TargetPlatform.windows),
+      textTheme: TextTheme(
+        // 详情页的标签(如平台名称)使用较小、浅色的样式
+        labelSmall: TextStyle(
+          fontSize: 11,
+          letterSpacing: 0.5,
+          color: Colors.grey,
+          fontWeight: FontWeight.w500,
         ),
-
-        // 反馈消息(悬浮圆角)
-        snackBarTheme: SnackBarThemeData(
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          elevation: 4,
-          width: 400,
-          backgroundColor: const Color.fromARGB(255, 55, 55, 55),
-          contentTextStyle: const TextStyle(
-            fontFamily: 'Segoe UI', // 同步主字体
-            fontFamilyFallback: ['Microsoft YaHei'], // 同步备用中文
-            color: Colors.white,
-            fontSize: 14,
-          ),
-        ),
-
-        cardTheme: CardThemeData(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-
-        // 统一输入框风格，让它看起来更现代
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.grey.withValues(alpha: 0.05),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.blue, width: 2),
-          ),
+        // 主要正文(如账号内容)
+        bodyMedium: TextStyle(
+          fontSize: 14,
+          letterSpacing: 0.2,
+          color: colorScheme.onSurface,
         ),
       ),
 
-      // 根据是否为老用户进入不同的界面
-      home: isOldUser ? const UnlockPage() : const ShellPage(),
+      // 反馈消息(悬浮圆角)
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        width: 400,
+        backgroundColor: const Color.fromARGB(255, 32, 32, 32),
+        contentTextStyle: const TextStyle(
+          color: Colors.white, // 强制白色文字
+          fontFamily: 'Segoe UI',
+          fontFamilyFallback: ['Microsoft YaHei'],
+        ),
+      ),
+      // 卡片配置
+      cardTheme: CardThemeData(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      // 统一输入框风格
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: colorScheme.primary, width: 2),
+        ),
+      ),
     );
   }
 }
