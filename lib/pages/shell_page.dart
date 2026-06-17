@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-17 16:13:22
+ * @LastEditTime: 2026-06-17 19:07:08
  * @Description: 主框架
  */
 
@@ -1300,6 +1300,39 @@ class SyncPageState extends State<SyncPage> {
     _settings.set('sync_history_json', jsonEncode(_logs));
   }
 
+  // 清空日志列表
+  void _clearLogs() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("清空日志"),
+        content: const Text("同步历史记录清空后将无法找回。"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("取消"),
+          ),
+          TextButton(
+            onPressed: () async {
+              setState(() {
+                _logs.clear();
+              });
+              // 写入一个空的 JSON 数组到数据库
+              await _settings.set('sync_history_json', '[]');
+              if (!context.mounted) return;
+              Navigator.pop(context);
+              MessageUtil.show(context, "日志已清空");
+            },
+            child: Text(
+              "确认",
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> refreshStatus() async {
     setState(() => _isLoading = true);
     try {
@@ -1330,7 +1363,6 @@ class SyncPageState extends State<SyncPage> {
   // 处理测试连接
   Future<void> _handlePing() async {
     setState(() => _isLoading = true);
-    _addLog("连接测试", "正在连接...");
     try {
       bool ok = await _webdav.ping();
       if (ok) {
@@ -1410,8 +1442,6 @@ class SyncPageState extends State<SyncPage> {
   // 处理智能同步逻辑
   Future<void> _handleSmartSync() async {
     if (_isLoading) return;
-    _addLog("智能同步", "正在对比...");
-
     final decision = await _webdav.compareVersions();
     switch (decision) {
       case SyncDecision.localNewer:
@@ -1487,7 +1517,7 @@ class SyncPageState extends State<SyncPage> {
                       Text(
                         "系统将根据修改时间自动决定上传或下载",
                         style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          color: colorScheme.onSurfaceVariant,
                           fontSize: 12,
                         ),
                       ),
@@ -1536,24 +1566,40 @@ class SyncPageState extends State<SyncPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Padding(
-                          padding: EdgeInsets.all(16.0),
+                          padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
                           child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Icon(
-                                Icons.history,
-                                size: 18,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.history,
+                                    size: 18,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    "同步日志",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              SizedBox(width: 8),
-                              Text(
-                                "同步日志",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: colorScheme.onSurfaceVariant,
+                              if (_logs.isNotEmpty) // 仅在有日志时显示清空按钮
+                                IconButton(
+                                  onPressed: _clearLogs,
+                                  icon: Icon(
+                                    Icons.delete_sweep_outlined,
+                                    size: 20,
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                  tooltip: "清空所有记录",
+                                  splashRadius: 20,
                                 ),
-                              ),
                             ],
                           ),
                         ),
@@ -1578,8 +1624,6 @@ class SyncPageState extends State<SyncPage> {
 
     try {
       setState(() => _isLoading = true);
-      _addLog(actionName, "执行中...");
-
       if (isUpload) {
         String newEtag = await _webdav.uploadVault(path);
         await _updateSyncMarkers(newEtag);
