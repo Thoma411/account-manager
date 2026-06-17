@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-17 16:50:34
+ * @LastEditTime: 2026-06-17 18:30:52
  * @Description: 账户信息页(查看页)
  */
 
@@ -313,6 +313,8 @@ class AccountListPageState extends State<AccountListPage> {
   @override
   Widget build(BuildContext context) {
     const double panelWidth = 400; // 定义侧栏宽度
+    const double headerHeight = 70.0; // 搜索框高度
+    const double listTopGap = 15.0; // 搜索框与卡片列表的间距
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
@@ -340,48 +342,73 @@ class AccountListPageState extends State<AccountListPage> {
             body: Stack(
               children: [
                 // 底层列表
-                Column(
+                Stack(
                   children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface, // 设置背景色
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.2),
-                            offset: const Offset(0, 4), // 阴影向下偏移4px
-                            blurRadius: 10, // 模糊半径
-                          ),
-                        ],
-                      ),
-                      child: Row(
+                    Positioned.fill(
+                      child: Column(
                         children: [
-                          Expanded(child: _buildSearchBox()),
-                          _buildSortButton(), // 新增排序按钮函数
-                          const SizedBox(width: 16),
+                          const SizedBox(height: headerHeight),
+                          Expanded(
+                            child: (!_isDbCreated || _allAccounts.isEmpty)
+                                ? _buildEmptyStateUI() // 当且仅当未建库/内容为空时显示引导
+                                : Row(
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          top: listTopGap,
+                                        ),
+                                        child: _buildAlphabetIndexBar(),
+                                      ), // 左侧: 字母索引导航栏
+                                      Expanded(
+                                        child: ListView.builder(
+                                          controller: _scrollController,
+                                          padding: const EdgeInsets.only(
+                                            top: listTopGap,
+                                            bottom: 20,
+                                          ),
+                                          itemCount: _displayAccounts.length,
+                                          itemExtent:
+                                              68.0, // Container高度60 + 上下边距4*2
+                                          itemBuilder: (context, index) {
+                                            return _buildAccountCard(
+                                              _displayAccounts[index],
+                                              index,
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                          // const SizedBox(height: 10),
                         ],
                       ),
                     ),
-                    Expanded(
-                      child: (!_isDbCreated || _allAccounts.isEmpty)
-                          ? _buildEmptyStateUI() // 当且仅当未建库/内容为空时显示引导
-                          : Row(
-                              children: [
-                                _buildAlphabetIndexBar(), // 左侧: 字母索引导航栏
-                                Expanded(
-                                  child: ListView.builder(
-                                    controller: _scrollController,
-                                    itemCount: _displayAccounts.length,
-                                    itemExtent: 68.0, // Container高度60 + 上下边距4*2
-                                    itemBuilder: (context, index) {
-                                      return _buildAccountCard(
-                                        _displayAccounts[index],
-                                        index,
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
+                    // 搜索栏
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface, // 设置背景色
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.12),
+                              offset: const Offset(0, 3), // 阴影偏移
+                              blurRadius: 8, // 模糊半径
+                              spreadRadius: 2,
                             ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(child: _buildSearchBox()),
+                            _buildSortButton(), // 新增排序按钮函数
+                            const SizedBox(width: 16),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
