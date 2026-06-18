@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-04-08 17:43:09
- * @LastEditTime: 2026-06-15 17:53:16
+ * @LastEditTime: 2026-06-18 00:20:07
  * @Description: 设置
  */
 
@@ -42,7 +42,7 @@ class SettingsService {
     final db = await StorageService().database;
     final List<Map<String, dynamic>> maps = await db.query('app_settings');
 
-    _dbCache.clear();
+    final Map<String, String> newCache = {};
     final sec = SecurityService();
     final dk = sec.currentDataKey;
 
@@ -55,8 +55,10 @@ class SettingsService {
           value = sec.decrypt(value, dk);
         } catch (_) {}
       }
-      _dbCache[key] = value;
+      newCache[key] = value;
     }
+    _dbCache.clear();
+    _dbCache.addAll(newCache);
   }
 
   // 3. 统一读取

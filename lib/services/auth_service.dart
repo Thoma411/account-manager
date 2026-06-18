@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-03 16:37:46
+ * @LastEditTime: 2026-06-18 00:20:37
  * @Description: 解锁与认证
  */
 
@@ -12,6 +12,7 @@ import 'package:encrypt/encrypt.dart' as enc;
 import 'security_service.dart';
 import 'settings_service.dart';
 import 'storage_service.dart';
+import 'webdav_service.dart';
 
 class AuthService {
   final StorageService _storage = StorageService();
@@ -41,6 +42,7 @@ class AuthService {
       if (verifyResult == "VAULT_READY") {
         // 5. 验证通过, 把DK存入内存供全应用使用
         _sec.setDK(dk);
+        WebDavService().reset();
         await SettingsService().loadDbSettings();
         // 确保本地设备状态与数据库版本对齐
         final s = SettingsService();

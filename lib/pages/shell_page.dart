@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-17 21:03:49
+ * @LastEditTime: 2026-06-18 00:23:29
  * @Description: 主框架
  */
 
@@ -550,6 +550,7 @@ class _ShellPageState extends State<ShellPage> with WindowListener {
 
   // 清理内存并直接退出登录
   void _logoutDirectly(String message) {
+    WebDavService().reset(); // 重置webdav状态
     SecurityService().clearKeys();
     StorageService().closeDatabase();
 
@@ -724,6 +725,7 @@ class SettingsPageState extends State<SettingsPage> {
                 userController.text,
                 pwdController.text,
               );
+              WebDavService().reset();
               if (!context.mounted) return;
               Navigator.pop(context); // 关闭输入框
               MessageUtil.show(context, "WebDAV 配置已保存，请前往云同步界面管理数据");
@@ -1052,6 +1054,7 @@ class SettingsPageState extends State<SettingsPage> {
                 ).showSnackBar(const SnackBar(content: Text("正在同步...")));
                 await WebDavService().uploadIfSafe();
               }
+              WebDavService().reset();
               SecurityService().clearKeys(); // 清空内存中的DK
               await StorageService().closeDatabase(); // 关闭db连接并重置句柄
               if (!context.mounted) return;
@@ -1373,7 +1376,10 @@ class SyncPageState extends State<SyncPage> {
           if (_settings.get('last_synced_etag', defaultValue: '')!.isEmpty) {
             await _settings.set('last_synced_etag', remoteETag);
           }
-          _addLog("连接测试", "成功 (云端版本: ${remoteETag.substring(0, 5)}...)");
+          final String tagDisplay = remoteETag.length > 5
+              ? remoteETag.substring(0, 5)
+              : remoteETag;
+          _addLog("连接测试", "成功 (云端版本: $tagDisplay...)");
         } else {
           _addLog("连接测试", "成功 (云端暂无备份)");
         }
