@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-18 00:23:29
+ * @LastEditTime: 2026-06-18 20:03:19
  * @Description: 主框架
  */
 
@@ -1444,23 +1444,58 @@ class SyncPageState extends State<SyncPage> {
     );
   }
 
+  // 用于智能同步下载确认的对话框
+  void _showActionConfirmDialog({
+    required String title,
+    required String content,
+    required VoidCallback onConfirm,
+  }) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("取消"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              onConfirm();
+            },
+            child: const Text("确定"),
+          ),
+        ],
+      ),
+    );
+  }
+
   // 处理智能同步逻辑
   Future<void> _handleSmartSync() async {
     if (_isLoading) return;
     final decision = await _webdav.compareVersions();
     switch (decision) {
+      case SyncDecision.bothSynced:
+        _addLog("智能同步", "无需操作：已是最新");
+        break;
       case SyncDecision.localNewer:
       case SyncDecision.noRemote:
-        await _executeSync(true); // 直接调用执行器上传
+        await _executeSync(true); // 执行上传
         break;
       case SyncDecision.remoteNewer:
+        _showActionConfirmDialog(
+          title: "拉取云端更新",
+          content: "将云端更新同步至本地？完成后需要重新登录。",
+          onConfirm: () => _executeSync(false), // 执行下载
+        );
+        break;
+      case SyncDecision.conflict:
         _showConflictDialog(
           onConfirmLocal: () => _executeSync(true),
           onConfirmRemote: () => _executeSync(false),
         );
-        break;
-      case SyncDecision.bothSynced:
-        _addLog("智能同步", "无需操作：已是最新");
         break;
       default:
         _addLog("智能同步", "异常：无法获取状态");
@@ -1624,23 +1659,24 @@ class SyncPageState extends State<SyncPage> {
 
   // 处理具体的物理同步动作
   Future<void> _executeSync(bool isUpload) async {
-    final path = await _storage.getDatabasePath();
     final actionName = isUpload ? "上传" : "下载";
 
     try {
       setState(() => _isLoading = true);
       if (isUpload) {
-        String newEtag = await _webdav.uploadVault(path);
+        String newEtag = await _webdav.uploadVault();
         await _updateSyncMarkers(newEtag);
         _addLog(actionName, "成功：云端已更新");
       } else {
         await _storage.closeDatabase();
-        String newEtag = await _webdav.downloadVault(path);
+        String newEtag = await _webdav.downloadVault();
         await _settings.set('last_synced_etag', newEtag);
         _addLog(actionName, "成功：本地已拉取");
 
         if (!mounted) return;
         // 下载后的强制重定向
+        SecurityService().clearKeys();
+        MessageUtil.show(context, "云端数据已同步，请重新解锁载入");
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const UnlockPage()),
           (route) => false,
@@ -1694,15 +1730,17 @@ class SyncPageState extends State<SyncPage> {
   // 获取智能同步文字
   String _getSmartSyncLabel() {
     if (_isLoading) return "检测中...";
-
     switch (_currentDecision) {
       case SyncDecision.bothSynced:
         return "已是最新版本";
       case SyncDecision.localNewer:
-      case SyncDecision.noRemote:
         return "上传本地更新";
       case SyncDecision.remoteNewer:
         return "拉取云端更新";
+      case SyncDecision.conflict:
+        return "发现版本冲突";
+      case SyncDecision.noRemote:
+        return "上传首个备份";
       case SyncDecision.error:
         return "检测失败，点击刷新";
       default:

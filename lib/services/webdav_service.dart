@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-04-13 18:19:04
- * @LastEditTime: 2026-06-18 17:58:27
+ * @LastEditTime: 2026-06-18 19:28:21
  * @Description: webdav
  */
 
@@ -44,7 +44,6 @@ class WebDavService {
     final url = settings.get('webdav_url');
     final user = settings.get('webdav_user');
     final pwd = settings.get('webdav_pwd');
-
     if (url == null ||
         url.isEmpty ||
         user == null ||
@@ -183,16 +182,15 @@ class WebDavService {
 
       // 3. 逻辑判定
       bool localChanged = localRev > lastSyncedRev;
-      bool remoteChanged =
-          (currentRemoteETag != lastSyncedETag && lastSyncedETag.isNotEmpty);
+      bool remoteChanged = currentRemoteETag != lastSyncedETag;
       // 两端均无改动
       if (!localChanged && !remoteChanged) return SyncDecision.bothSynced;
       // 仅本地改动
       if (localChanged && !remoteChanged) return SyncDecision.localNewer;
-      // 仅云端改动（其他设备同步）
+      // 仅云端改动
       if (!localChanged && remoteChanged) return SyncDecision.remoteNewer;
       // 两端均有改动（冲突）
-      return SyncDecision.remoteNewer; // 此处建议返回remoteNewer触发UI冲突对话框
+      return SyncDecision.conflict;
     } catch (e) {
       return SyncDecision.error;
     }
@@ -208,33 +206,41 @@ class WebDavService {
     );
   }
 
-  Future<String> uploadVault(String localPath) async {
+  // 上传
+  Future<String> uploadVault() async {
     if (_currentUrl == null && !initFromSettings()) throw Exception("未配置");
     await _ensureRemoteDir();
-    final res = await _doHttpRequest(method: 'PUT', localPath: localPath);
-    return (res.headers['etag'] ?? res.headers['ETag'] ?? "").replaceAll(
-      '"',
-      '',
+    final res = await _doHttpRequest(
+      method: 'PUT',
+      localPath: await StorageService().getDatabasePath(),
     );
+    String etag = (res.headers['etag'] ?? "").replaceAll('"', '');
+    // 如果etag为空则需发起查询
+    if (etag.isEmpty) {
+      final remoteInfo = await getRemoteVaultInfo();
+      etag = remoteInfo?.eTag ?? "";
+    }
+    debugPrint("WebDavService: etag: $etag");
+    return etag;
   }
 
-  Future<String> downloadVault(String localPath) async {
+  // 下载
+  Future<String> downloadVault() async {
     if (_currentUrl == null && !initFromSettings()) throw Exception("未配置");
-    final res = await _doHttpRequest(method: 'GET', localPath: localPath);
-    return (res.headers['etag'] ?? res.headers['ETag'] ?? "").replaceAll(
-      '"',
-      '',
+    final res = await _doHttpRequest(
+      method: 'GET',
+      localPath: await StorageService().getDatabasePath(),
     );
+    return (res.headers['etag'] ?? "").replaceAll('"', '');
   }
 
-  // 执行静默安全上传 (恢复 shell_page 的引用)
+  // 执行静默安全上传
   Future<bool> uploadIfSafe() async {
     try {
       final decision = await compareVersions();
       if (decision == SyncDecision.localNewer ||
           decision == SyncDecision.noRemote) {
-        final path = await StorageService().getDatabasePath();
-        String etag = await uploadVault(path);
+        String etag = await uploadVault();
         // 同步成功后更新锚点
         final s = SettingsService();
         String? localRev = s.get('local_revision', defaultValue: '0');
@@ -248,14 +254,13 @@ class WebDavService {
     }
   }
 
-  // 执行静默安全下载 (恢复 shell_page 的引用)
+  // 执行静默安全下载
   Future<bool> downloadIfSafe() async {
     try {
       final decision = await compareVersions();
       if (decision == SyncDecision.remoteNewer) {
-        final path = await StorageService().getDatabasePath();
         await StorageService().closeDatabase();
-        String newEtag = await downloadVault(path);
+        String newEtag = await downloadVault();
         await SettingsService().set('last_synced_etag', newEtag);
         return true;
       }
@@ -301,9 +306,10 @@ class WebDavService {
 }
 
 enum SyncDecision {
+  bothSynced, // 已同步
   localNewer, // 本地较新 建议上传
   remoteNewer, // 云端较新 建议下载
-  bothSynced, // 已同步
+  conflict, // 双端冲突
   noRemote, // 云端无备份
   error, // 检测出错
 }

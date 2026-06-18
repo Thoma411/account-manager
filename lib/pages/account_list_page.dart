@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-17 21:31:09
+ * @LastEditTime: 2026-06-18 19:30:07
  * @Description: 账户信息页(查看页)
  */
 
@@ -1905,9 +1905,7 @@ class AccountListPageState extends State<AccountListPage> {
                 // 检查文件是否存在
                 bool fileExists = files.any((f) => f.name == 'vault_keeper.db');
                 if (!fileExists) throw Exception("云端目录中未找到vault_keeper.db");
-                final localPath = await StorageService()
-                    .getDatabasePath(); // 获取本地存放路径
-                await webdav.downloadVault(localPath); // 下载
+                await webdav.downloadVault(); // 下载
                 if (!context.mounted) return;
                 Navigator.pop(context); // 关闭配置弹窗
                 // 下载成功后，由于本地有了.db，自动引导至解锁流程
