@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-18 20:03:19
+ * @LastEditTime: 2026-06-22 21:55:11
  * @Description: 主框架
  */
 
@@ -666,35 +666,37 @@ class SettingsPageState extends State<SettingsPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("配置WebDAV云同步"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              "建议使用坚果云等支持WebDAV的网盘。同步数据将以加密形式上传。",
-              style: TextStyle(
-                fontSize: 12,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "建议使用坚果云等支持WebDAV的网盘。同步数据将以加密形式上传。",
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: urlController,
-              decoration: const InputDecoration(
-                labelText: "服务器地址 (如: https://dav.jianguoyun.com/dav/)",
+              const SizedBox(height: 20),
+              TextField(
+                controller: urlController,
+                decoration: const InputDecoration(
+                  labelText: "服务器地址 (如: https://dav.jianguoyun.com/dav/)",
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: userController,
-              decoration: const InputDecoration(labelText: "账号 (邮箱)"),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: pwdController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: "应用密码"),
-            ),
-          ],
+              const SizedBox(height: 12),
+              TextField(
+                controller: userController,
+                decoration: const InputDecoration(labelText: "账号 (邮箱)"),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: pwdController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: "应用密码"),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -943,35 +945,37 @@ class SettingsPageState extends State<SettingsPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("修改主密码"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              "修改主密码后将强制退出，请使用新主密码重新登录。",
-              style: TextStyle(
-                fontSize: 12,
-                color: Theme.of(context).colorScheme.error,
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "修改主密码后将强制退出，请使用新主密码重新登录。",
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.error,
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: oldPwController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: "当前主密码"),
-            ),
-            const Divider(height: 32),
-            TextField(
-              controller: newPwController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: "新主密码 (至少6位)"),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: confirmPwController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: "确认新主密码"),
-            ),
-          ],
+              const SizedBox(height: 20),
+              TextField(
+                controller: oldPwController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: "当前主密码"),
+              ),
+              const Divider(height: 32),
+              TextField(
+                controller: newPwController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: "新主密码 (至少6位)"),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: confirmPwController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: "确认新主密码"),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(

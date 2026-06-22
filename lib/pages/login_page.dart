@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-22 19:47:45
- * @LastEditTime: 2026-06-17 15:30:25
+ * @LastEditTime: 2026-06-22 22:27:40
  * @Description: 初始登入界面
  */
 
@@ -49,25 +49,27 @@ class _UnlockPageState extends State<UnlockPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("重置主密码"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              "请输入您事先保存的恢复密钥 (RK)：",
-              style: TextStyle(
-                fontSize: 12,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "请输入您事先保存的恢复密钥 (RK)：",
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: rkController,
-              decoration: const InputDecoration(
-                labelText: "恢复密钥",
-                hintText: "一串 Base64 编码的字符",
+              const SizedBox(height: 16),
+              TextField(
+                controller: rkController,
+                decoration: const InputDecoration(
+                  labelText: "恢复密钥",
+                  hintText: "一串 Base64 编码的字符",
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -115,23 +117,25 @@ class _UnlockPageState extends State<UnlockPage> {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: const Text("设置新主密码"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text("密钥验证成功！请立即设置新的主密码：", style: TextStyle(fontSize: 12)),
-            const SizedBox(height: 16),
-            TextField(
-              controller: newPwController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: "新主密码"),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: confirmController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: "确认新主密码"),
-            ),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("密钥验证成功！请立即设置新的主密码：", style: TextStyle(fontSize: 12)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: newPwController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: "新主密码"),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: confirmController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: "确认新主密码"),
+              ),
+            ],
+          ),
         ),
         actions: [
           ElevatedButton(
@@ -225,59 +229,65 @@ class _UnlockPageState extends State<UnlockPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       body: Center(
-        child: Container(
-          width: 350,
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.lock_outline,
-                size: 64,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                "身份验证",
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                "请输入主密码以解锁数据库",
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Container(
+            width: 350,
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 20), // 顶部留白
+                Icon(
+                  Icons.lock_outline,
+                  size: 64,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
-              ),
-              const SizedBox(height: 32),
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: "主密码",
-                  prefixIcon: Icon(Icons.password),
+                const SizedBox(height: 24),
+                const Text(
+                  "身份验证",
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
-                onSubmitted: (_) => _unlock(),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _unlock,
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 50),
-                ),
-                child: const Text("解锁"),
-              ),
-              TextButton(
-                onPressed: _showForgotPasswordDialog,
-                child: Text(
-                  "忘记主密码？",
+                const SizedBox(height: 12),
+                Text(
+                  "请输入主密码以解锁数据库",
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontSize: 13,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 32),
+                TextField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: "主密码",
+                    prefixIcon: Icon(Icons.password),
+                  ),
+                  onSubmitted: (_) => _unlock(),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: _unlock,
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
+                  ),
+                  child: const Text("解锁"),
+                ),
+                TextButton(
+                  onPressed: _showForgotPasswordDialog,
+                  child: Text(
+                    "忘记主密码？",
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20), // 底部留白
+              ],
+            ),
           ),
         ),
       ),

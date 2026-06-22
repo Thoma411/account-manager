@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-18 19:30:07
+ * @LastEditTime: 2026-06-22 22:04:28
  * @Description: 账户信息页(查看页)
  */
 
@@ -1768,23 +1768,25 @@ class AccountListPageState extends State<AccountListPage> {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: const Text("初始化安全保险箱"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text("设置主密码后，我们将为您生成唯一的加密环境。"),
-            const SizedBox(height: 20),
-            TextField(
-              controller: pwController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: "输入主密码 (不少于6位)"),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: confirmController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: "确认主密码"),
-            ),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("设置主密码后，我们将为您生成唯一的加密环境。"),
+              const SizedBox(height: 20),
+              TextField(
+                controller: pwController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: "输入主密码 (不少于6位)"),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: confirmController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: "确认主密码"),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -1862,25 +1864,27 @@ class AccountListPageState extends State<AccountListPage> {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: const Text("从云端拉取备份"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text("请输入您的WebDAV配置信息以连接云盘。"),
-            const SizedBox(height: 20),
-            TextField(
-              controller: urlController,
-              decoration: const InputDecoration(labelText: "服务器地址"),
-            ),
-            TextField(
-              controller: userController,
-              decoration: const InputDecoration(labelText: "账号"),
-            ),
-            TextField(
-              controller: pwdController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: "应用密码"),
-            ),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("请输入您的WebDAV配置信息以连接云盘。"),
+              const SizedBox(height: 20),
+              TextField(
+                controller: urlController,
+                decoration: const InputDecoration(labelText: "服务器地址"),
+              ),
+              TextField(
+                controller: userController,
+                decoration: const InputDecoration(labelText: "账号"),
+              ),
+              TextField(
+                controller: pwdController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: "应用密码"),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
