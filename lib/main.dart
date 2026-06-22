@@ -1,12 +1,13 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-09 23:51:46
- * @LastEditTime: 2026-06-20 19:57:26
+ * @LastEditTime: 2026-06-23 00:22:41
  * @Description: main
  */
 
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -20,7 +21,16 @@ final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // 确保Flutter引擎绑定
-
+  // 沉浸式状态栏
+  if (Platform.isAndroid || Platform.isIOS) {
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
+  }
+  // 电脑端初始化
   if (Platform.isWindows) {
     sqfliteFfiInit(); // 初始化SQLite FFI引擎
     databaseFactory = databaseFactoryFfi;

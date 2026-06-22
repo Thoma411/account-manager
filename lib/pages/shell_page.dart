@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-22 21:55:11
+ * @LastEditTime: 2026-06-22 23:36:27
  * @Description: 主框架
  */
 
@@ -96,93 +96,95 @@ class _ShellPageState extends State<ShellPage> with WindowListener {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          // 左右布局(导航栏+内容区)
-          Row(
-            children: [
-              NavigationRail(
-                selectedIndex: _selectedIndex,
-                onDestinationSelected: _onDestinationSelected,
-                labelType: NavigationRailLabelType.all,
-                leading: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
-                  child: Icon(
-                    Icons.shield,
-                    size: 40,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-                destinations: const [
-                  NavigationRailDestination(
-                    icon: Icon(Icons.list),
-                    label: Text('账户列表'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.sync),
-                    label: Text('云同步'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.settings),
-                    label: Text('设置'),
-                  ),
-                ],
-              ),
-              const VerticalDivider(thickness: 1, width: 1),
-              Expanded(
-                child: IndexedStack(index: _selectedIndex, children: _pages),
-              ),
-            ],
-          ),
-          // 固定新增按钮
-          Positioned(
-            left: 15, // 距离左边距离
-            bottom: 25, // 距离底部距离
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            // 左右布局(导航栏+内容区)
+            Row(
               children: [
-                // 仅在主页显示刷新，或者全局显示用于强制重载所有数据
-                FloatingActionButton.small(
-                  heroTag: "refresh_list_global",
-                  elevation: 1, // 默认阴影
-                  focusElevation: 0, // 聚焦阴影
-                  hoverElevation: 0, // 鼠标悬停阴影
-                  highlightElevation: 0, // 点击阴影
-                  onPressed: () {
-                    // 分别刷新对应的状态
-                    if (_selectedIndex == 0) {
-                      _accountListPageKey.currentState?.refreshAccountList();
-                      MessageUtil.show(context, "刷新成功");
-                    } else if (_selectedIndex == 1) {
-                      _syncPageKey.currentState?.refreshStatus();
-                    }
-                  },
-                  backgroundColor: Theme.of(
-                    context,
-                  ).colorScheme.surfaceContainer,
-                  child: Icon(
-                    Icons.refresh,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    size: 20,
+                NavigationRail(
+                  selectedIndex: _selectedIndex,
+                  onDestinationSelected: _onDestinationSelected,
+                  labelType: NavigationRailLabelType.all,
+                  leading: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Icon(
+                      Icons.shield,
+                      size: 40,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                   ),
+                  destinations: const [
+                    NavigationRailDestination(
+                      icon: Icon(Icons.list),
+                      label: Text('账户列表'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.sync),
+                      label: Text('云同步'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.settings),
+                      label: Text('设置'),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                FloatingActionButton(
-                  heroTag: "add_account_fab",
-                  elevation: 1,
-                  focusElevation: 0,
-                  hoverElevation: 0,
-                  highlightElevation: 0,
-                  onPressed: _showAddAccountDialog,
-                  backgroundColor: Theme.of(
-                    context,
-                  ).colorScheme.primaryContainer,
-                  child: const Icon(Icons.add),
+                const VerticalDivider(thickness: 1, width: 1),
+                Expanded(
+                  child: IndexedStack(index: _selectedIndex, children: _pages),
                 ),
               ],
             ),
-          ),
-        ],
+            // 固定新增按钮
+            Positioned(
+              left: 15, // 距离左边距离
+              bottom: 25, // 距离底部距离
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 仅在主页显示刷新，或者全局显示用于强制重载所有数据
+                  FloatingActionButton.small(
+                    heroTag: "refresh_list_global",
+                    elevation: 1, // 默认阴影
+                    focusElevation: 0, // 聚焦阴影
+                    hoverElevation: 0, // 鼠标悬停阴影
+                    highlightElevation: 0, // 点击阴影
+                    onPressed: () {
+                      // 分别刷新对应的状态
+                      if (_selectedIndex == 0) {
+                        _accountListPageKey.currentState?.refreshAccountList();
+                        MessageUtil.show(context, "刷新成功");
+                      } else if (_selectedIndex == 1) {
+                        _syncPageKey.currentState?.refreshStatus();
+                      }
+                    },
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainer,
+                    child: Icon(
+                      Icons.refresh,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  FloatingActionButton(
+                    heroTag: "add_account_fab",
+                    elevation: 1,
+                    focusElevation: 0,
+                    hoverElevation: 0,
+                    highlightElevation: 0,
+                    onPressed: _showAddAccountDialog,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.primaryContainer,
+                    child: const Icon(Icons.add),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
