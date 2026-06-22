@@ -1,14 +1,15 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-15 21:48:32
+ * @LastEditTime: 2026-06-20 21:54:01
  * @Description: 与SQLite交互的方法
  */
 
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:path/path.dart';
-import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 import '../models/account.dart';
 import 'settings_service.dart';
@@ -44,10 +45,15 @@ class StorageService {
 
   // 获取数据库的完整物理路径
   Future<String> getDatabasePath() async {
-    sqfliteFfiInit();
-    var databaseFactory = databaseFactoryFfi;
-    final dbPath = await databaseFactory.getDatabasesPath();
-    return join(dbPath, 'vault_keeper.db');
+    if (Platform.isWindows) {
+      sqfliteFfiInit(); // 仅Windows需要
+      final dbPath = await databaseFactoryFfi.getDatabasesPath();
+      return join(dbPath, 'vault_keeper.db');
+    } else {
+      // Android路径获取
+      final directory = await getApplicationDocumentsDirectory();
+      return join(directory.path, 'vault_keeper.db');
+    }
   }
 
   // 判断数据库是否存在
@@ -62,19 +68,25 @@ class StorageService {
 
   // 初始化数据库
   Future<Database> _initDB() async {
-    sqfliteFfiInit(); // Windows端初始化数据库引擎
-    var databaseFactory = databaseFactoryFfi;
-    final dbPath = await databaseFactory.getDatabasesPath();
-    final path = join(dbPath, 'vault_keeper.db');
+    String path;
+    if (Platform.isWindows) {
+      sqfliteFfiInit();
+      final dbFactory = databaseFactoryFfi;
+      final dbPath = await dbFactory.getDatabasesPath();
+      path = join(dbPath, 'vault_keeper.db');
+    } else {
+      // Android/iOS
+      final directory = await getApplicationDocumentsDirectory();
+      path = join(directory.path, 'vault_keeper.db');
+    }
     debugPrint("db real path: $path");
 
-    return await databaseFactory.openDatabase(
+    return await openDatabase(
       path,
-      options: OpenDatabaseOptions(
-        version: 1,
-        onCreate: (db, version) async {
-          // 创建账户条目表
-          await db.execute('''
+      version: 1,
+      onCreate: (db, version) async {
+        // 创建账户条目表
+        await db.execute('''
             CREATE TABLE accounts (
               id TEXT PRIMARY KEY, platform TEXT, url TEXT,
               status INTEGER, tags TEXT,
@@ -84,21 +96,20 @@ class StorageService {
               last_modified TEXT
             )
           ''');
-          // 创建系统元数据表
-          await db.execute('''
+        // 创建系统元数据表
+        await db.execute('''
             CREATE TABLE system_metadata (
               key TEXT PRIMARY KEY, value TEXT
             )
           ''');
-          // 创建设置表
-          await db.execute('''
+        // 创建设置表
+        await db.execute('''
             CREATE TABLE app_settings (
               key TEXT PRIMARY KEY, value TEXT,
               is_encrypted INTEGER DEFAULT 0
             )
           ''');
-        },
-      ),
+      },
     );
   }
 

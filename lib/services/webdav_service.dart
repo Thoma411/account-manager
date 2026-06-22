@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-04-13 18:19:04
- * @LastEditTime: 2026-06-18 19:28:21
+ * @LastEditTime: 2026-06-22 21:06:31
  * @Description: webdav
  */
 
@@ -297,7 +297,11 @@ class WebDavService {
     } else {
       final res = await http.get(targetUri, headers: {'Authorization': auth});
       if (res.statusCode == 200) {
-        await File(localPath).writeAsBytes(res.bodyBytes);
+        final File file = File(localPath);
+        if (!await file.parent.exists()) {
+          await file.parent.create(recursive: true); // 确保目录创建
+        }
+        await file.writeAsBytes(res.bodyBytes);
         return res;
       }
       throw Exception("下载失败: ${res.statusCode}");

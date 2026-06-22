@@ -1,10 +1,11 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-09 23:51:46
- * @LastEditTime: 2026-06-17 15:55:56
+ * @LastEditTime: 2026-06-20 19:57:26
  * @Description: main
  */
 
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -19,25 +20,28 @@ final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // 确保Flutter引擎绑定
-  sqfliteFfiInit(); // 初始化SQLite FFI引擎
-  databaseFactory = databaseFactoryFfi;
+
+  if (Platform.isWindows) {
+    sqfliteFfiInit(); // 初始化SQLite FFI引擎
+    databaseFactory = databaseFactoryFfi;
+
+    await windowManager.ensureInitialized(); // 初始化窗口管理器
+    WindowOptions windowOptions = const WindowOptions(
+      size: Size(800, 600),
+      minimumSize: Size(800, 600),
+      center: true,
+      title: "Vault Keeper",
+      backgroundColor: Colors.transparent,
+      skipTaskbar: false,
+      titleBarStyle: TitleBarStyle.normal,
+    );
+
+    windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
+  }
   await SettingsService().init(); // 加载本地配置
-  await windowManager.ensureInitialized(); // 初始化窗口管理器
-
-  WindowOptions windowOptions = const WindowOptions(
-    size: Size(800, 600),
-    minimumSize: Size(800, 600),
-    center: true,
-    title: "Vault Keeper",
-    backgroundColor: Colors.transparent,
-    skipTaskbar: false,
-    titleBarStyle: TitleBarStyle.normal,
-  );
-
-  windowManager.waitUntilReadyToShow(windowOptions, () async {
-    await windowManager.show();
-    await windowManager.focus();
-  });
 
   // 探测本地数据库是否存在
   final bool oldUser = await StorageService().isDatabaseExists();
