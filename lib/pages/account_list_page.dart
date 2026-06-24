@@ -1,27 +1,25 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-22 22:04:28
+ * @LastEditTime: 2026-06-25 01:30:11
  * @Description: 账户信息页(查看页)
  */
 
-import 'dart:io';
 import 'dart:convert';
 import 'package:encrypt/encrypt.dart' as enc;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart';
 import 'package:webdav_client/webdav_client.dart' as dav;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:intl/intl.dart';
 
 import '../models/account.dart';
+import '../widgets/alphabet_indexer.dart';
+import '../widgets/account_card.dart';
+import '../widgets/account_detail_view.dart';
 import '../services/storage_service.dart';
 import '../services/settings_service.dart';
 import '../services/security_service.dart';
-import '../services/icon_service.dart';
 import '../services/webdav_service.dart';
 import '../pages/login_page.dart';
 import '../utils/utils.dart';
@@ -51,7 +49,6 @@ class AccountListPageState extends State<AccountListPage> {
   List<Account> _displayAccounts = []; // 经过过滤后显示在界面上的列表
 
   Set<String> _globalTags = {}; // 用于自动补全提示
-  List<String> _tempTags = []; // 临时标签集
 
   String _iconDirPath = ""; // 缓存路径字符串
 
@@ -62,44 +59,10 @@ class AccountListPageState extends State<AccountListPage> {
   final Map<String, int> _alphabetIndexMap = {}; // 存储{字母:Index}
   final ScrollController _scrollController = ScrollController(); // 控制跳转
 
-  bool _isEditing = false; // 是否正在编辑
-  final _formKey = GlobalKey<FormState>();
-
-  // 详情页字段控制器
-  late TextEditingController _platformController,
-      _nameController,
-      _urlController,
-      _userIdController,
-      _emailController,
-      _pswdController,
-      _phoneController,
-      _birthController,
-      _notesController,
-      _signupDateController,
-      _tagsController;
-  int _currentStatus = 1;
-  bool _currentRealName = false;
-
   // 增加初始化逻辑，进入页面即拉取数据库
   @override
   void initState() {
     super.initState();
-    // 控制器
-    _platformController = TextEditingController();
-    _nameController = TextEditingController();
-    _urlController = TextEditingController();
-    _userIdController = TextEditingController();
-    _emailController = TextEditingController();
-    _pswdController = TextEditingController();
-    _phoneController = TextEditingController();
-    _birthController = TextEditingController();
-    _notesController = TextEditingController();
-    _signupDateController = TextEditingController();
-    _tagsController = TextEditingController();
-    // 监听标签输入，实时显示建议
-    _tagsController.addListener(() {
-      if (_isEditing) setState(() {}); // 输入时强制重绘
-    });
     // 排序依据
     _sortBy = _settings.get('sort_by', defaultValue: 'platform')!;
     _isAscending =
@@ -112,18 +75,6 @@ class AccountListPageState extends State<AccountListPage> {
   // 释放资源防止内存泄露
   @override
   void dispose() {
-    _platformController.dispose();
-    _nameController.dispose();
-    _urlController.dispose();
-    _userIdController.dispose();
-    _emailController.dispose();
-    _pswdController.dispose();
-    _phoneController.dispose();
-    _birthController.dispose();
-    _notesController.dispose();
-    _signupDateController.dispose();
-    _tagsController.dispose();
-
     _searchController.dispose();
     _searchFocusNode.dispose();
     _pageFocusNode.dispose();
@@ -232,74 +183,12 @@ class AccountListPageState extends State<AccountListPage> {
     });
   }
 
-  // 弹出删除确认对话框
-  void _confirmDelete(Account account) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text("确认删除"),
-          content: Text("确定要删除 ${account.platform} 的账户信息吗？此操作不可撤销。"),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(), // 关闭弹窗
-              child: const Text("取消"),
-            ),
-            TextButton(
-              onPressed: () async {
-                await StorageService().deleteAccount(account.id); // 执行删除
-                if (!context.mounted) return;
-
-                Navigator.of(context).pop(); // 关闭弹窗
-                setState(() {
-                  _selectedAccountId = null;
-                  _isPanelOpen = false; // 关闭面板
-                });
-                refreshAccountList(); // 刷新列表
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text("条目已成功删除")));
-              },
-              style: TextButton.styleFrom(
-                foregroundColor: Theme.of(context).colorScheme.error,
-              ),
-              child: const Text("确定删除"),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   // 点击账户卡片时触发
   void _onAccountSelected(int index) {
     final acc = _displayAccounts[index];
     setState(() {
-      _selectedAccountId = acc.id;
-      _isPanelOpen = true;
-      _isEditing = false; // 切换条目时默认设为只读
-
-      // 填充控制器
-      _platformController.text = acc.platform;
-      _nameController.text = acc.name;
-      _urlController.text = acc.url;
-      _userIdController.text = acc.userId;
-      _emailController.text = acc.email;
-      _pswdController.text = acc.pswd;
-      _phoneController.text = acc.phone;
-      _birthController.text = acc.birth != null
-          ? DateFormat('yyyy-MM-dd').format(acc.birth!)
-          : "";
-      _notesController.text = acc.notes ?? "";
-      _signupDateController.text = acc.signupDate != null
-          ? DateFormat('yyyy-MM-dd').format(acc.signupDate!)
-          : "";
-      _tagsController.text = acc.tags.join(',');
-      _currentStatus = acc.status;
-      _currentRealName = acc.realName;
-
-      _tagsController.clear(); // 清空标签输入框
-      _tempTags = List.from(acc.tags); // 拷贝一份标签
+      _selectedAccountId = acc.id; // 记录被选中的账户ID
+      _isPanelOpen = true; // 展开右侧面板
     });
   }
 
@@ -357,8 +246,12 @@ class AccountListPageState extends State<AccountListPage> {
                                         padding: const EdgeInsets.only(
                                           top: listTopGap,
                                         ),
-                                        child: _buildAlphabetIndexBar(),
-                                      ), // 左侧: 字母索引导航栏
+                                        child: AlphabetIndexer(
+                                          alphabetIndexMap: _alphabetIndexMap,
+                                          onLetterSelected: _jumpToSection,
+                                          alignRight: false,
+                                        ),
+                                      ), // 字母索引导航栏
                                       Expanded(
                                         child: ListView.builder(
                                           controller: _scrollController,
@@ -370,9 +263,37 @@ class AccountListPageState extends State<AccountListPage> {
                                           itemExtent:
                                               68.0, // Container高度60 + 上下边距4*2
                                           itemBuilder: (context, index) {
-                                            return _buildAccountCard(
-                                              _displayAccounts[index],
-                                              index,
+                                            final acc = _displayAccounts[index];
+                                            return AccountCard(
+                                              account: acc,
+                                              isSelected:
+                                                  _selectedAccountId == acc.id,
+                                              isPasswordVisible:
+                                                  _visiblePasswordIds.contains(
+                                                    acc.id,
+                                                  ),
+                                              iconDirPath: _iconDirPath,
+                                              onTap: () =>
+                                                  _onAccountSelected(index),
+                                              onTogglePassword: () {
+                                                setState(() {
+                                                  _visiblePasswordIds.contains(
+                                                        acc.id,
+                                                      )
+                                                      ? _visiblePasswordIds
+                                                            .remove(acc.id)
+                                                      : _visiblePasswordIds.add(
+                                                          acc.id,
+                                                        );
+                                                });
+                                              },
+                                              onCopyPassword: () {
+                                                MessageUtil.show(
+                                                  context,
+                                                  "密码已复制",
+                                                );
+                                              },
+                                              isMobile: false, // 电脑模式传入 false
                                             );
                                           },
                                         ),
@@ -493,7 +414,30 @@ class AccountListPageState extends State<AccountListPage> {
                                 orElse: () =>
                                     _displayAccounts.first, // 万一没找到则回退到第一条
                               );
-                              return _buildDetailPanel(account);
+                              return AccountDetailView(
+                                account: account,
+                                iconDirPath: _iconDirPath,
+                                globalTags: _globalTags,
+                                onClose: _closePanel,
+                                onSaveSuccess: () async {
+                                  // 就地编辑保存成功后仅刷新列表
+                                  await refreshAccountList();
+                                },
+                                onDeleteSuccess: () async {
+                                  // 删除成功后，关闭面板、重置状态、刷新列表
+                                  setState(() {
+                                    _selectedAccountId = null;
+                                    _isPanelOpen = false;
+                                  });
+                                  await refreshAccountList();
+                                },
+                                onTagClicked: (tag) {
+                                  //点击tag后，在搜索栏中填充tag、执行搜索过滤、关闭详情页
+                                  _searchController.text = tag;
+                                  _filterAccounts(tag);
+                                  _closePanel();
+                                },
+                              );
                             })()
                           : const SizedBox.shrink(),
                     ),
@@ -643,68 +587,6 @@ class AccountListPageState extends State<AccountListPage> {
     );
   }
 
-  // 构建字母索引导航栏
-  Widget _buildAlphabetIndexBar() {
-    const List<String> alphabet = [
-      '#',
-      'A',
-      'B',
-      'C',
-      'D',
-      'E',
-      'F',
-      'G',
-      'H',
-      'I',
-      'J',
-      'K',
-      'L',
-      'M',
-      'N',
-      'O',
-      'P',
-      'Q',
-      'R',
-      'S',
-      'T',
-      'U',
-      'V',
-      'W',
-      'X',
-      'Y',
-      'Z',
-    ];
-    return Container(
-      width: 25, // 宽度
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: alphabet.map((char) {
-          bool hasData = _alphabetIndexMap.containsKey(char);
-          return Expanded(
-            child: InkWell(
-              onTap: !hasData ? null : () => _jumpToSection(char),
-              child: Center(
-                child: Text(
-                  char,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: hasData
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.15),
-                  ),
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
   // 字母索引导航栏跳转逻辑
   void _jumpToSection(String char) {
     // 检查控制器是否已绑定到活跃的ScrollView
@@ -719,1040 +601,6 @@ class AccountListPageState extends State<AccountListPage> {
       final maxScroll = _scrollController.position.maxScrollExtent;
       final finalOffset = targetOffset > maxScroll ? maxScroll : targetOffset;
       _scrollController.jumpTo(finalOffset);
-    }
-  }
-
-  // 构建详情面板的顶部区域
-  Widget _buildDetailHeader(Account account) {
-    final Color statusColor = _getStatusColor(_currentStatus);
-    return Container(
-      padding: const EdgeInsets.all(24),
-      // 背景采用极淡的状态色，增强氛围感
-      color: statusColor.withValues(alpha: 0.05),
-      child: Row(
-        children: [
-          _buildLargeLogo(account), // 左侧大图标
-          const SizedBox(width: 20),
-          // 中间标题与状态标签
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (!_isEditing) ...[
-                  // 只读模式：显示标题文字
-                  Text(
-                    account.platform,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  _buildStatusChip(_currentStatus),
-                ] else ...[
-                  // 编辑模式：标题变输入框
-                  TextFormField(
-                    controller: _platformController,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    decoration: const InputDecoration(
-                      hintText: "平台名称",
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
-                      border: InputBorder.none, // 去掉下划线，看起来更像“就地”编辑
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // 状态变下拉框
-                  SizedBox(
-                    height: 35,
-                    child: DropdownButton<int>(
-                      value: _currentStatus,
-                      isDense: true,
-                      underline: const SizedBox(), // 隐藏下划线
-                      items: const [
-                        DropdownMenuItem(
-                          value: 1,
-                          child: Text("使用中", style: TextStyle(fontSize: 12)),
-                        ),
-                        DropdownMenuItem(
-                          value: 0,
-                          child: Text("未注册", style: TextStyle(fontSize: 12)),
-                        ),
-                        DropdownMenuItem(
-                          value: 2,
-                          child: Text("已注销", style: TextStyle(fontSize: 12)),
-                        ),
-                        DropdownMenuItem(
-                          value: 3,
-                          child: Text("无法使用", style: TextStyle(fontSize: 12)),
-                        ),
-                      ],
-                      onChanged: (v) => setState(() => _currentStatus = v ?? 1),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          IconButton(
-            onPressed: _toggleEditMode,
-            icon: Icon(
-              _isEditing ? Icons.check_circle_outline : Icons.edit_note,
-              color: Theme.of(context).colorScheme.primary,
-            ), // 编辑/保存切换按钮
-            tooltip: _isEditing ? "保存修改" : "编辑信息",
-          ),
-          // 右侧关闭按钮
-          IconButton(
-            onPressed: _closePanel, // 调用State类中的关闭方法
-            icon: Icon(
-              Icons.close,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            tooltip: "关闭面板",
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 切换状态(只读/编辑)
-  void _toggleEditMode() async {
-    if (_isEditing) {
-      // 去除首尾空格
-      _platformController.text = _platformController.text.trim();
-      _nameController.text = _nameController.text.trim();
-      _urlController.text = _urlController.text.trim();
-      _userIdController.text = _userIdController.text.trim();
-      _emailController.text = _emailController.text.trim();
-      _phoneController.text = _phoneController.text.trim();
-      // 自动保存标签输入框中未回车的内容
-      if (_tagsController.text.trim().isNotEmpty) {
-        _addNewTag(_tagsController.text);
-      }
-      // 执行保存逻辑
-      if (_formKey.currentState!.validate()) {
-        // 获取编辑对象
-        final acc = _allAccounts.firstWhere((a) => a.id == _selectedAccountId);
-        final newName = _platformController.text.trim();
-        // 重名检查
-        if (newName.toLowerCase() != acc.platform.toLowerCase()) {
-          bool exists = await StorageService().isPlatformNameExists(newName);
-          if (exists) {
-            if (!mounted) return;
-            showDialog(
-              context: context,
-              builder: (ctx) => AlertDialog(
-                title: const Text("平台名冲突"),
-                content: Text("修改失败：平台 '$newName' 已存在，请更换名称。"),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: const Text("确认"),
-                  ),
-                ],
-              ),
-            );
-            return;
-          }
-        }
-        // 信息充分性检查
-        bool hasAnyCredential =
-            _nameController.text.trim().isNotEmpty ||
-            _userIdController.text.trim().isNotEmpty ||
-            _pswdController.text.trim().isNotEmpty ||
-            _emailController.text.trim().isNotEmpty ||
-            _phoneController.text.trim().isNotEmpty;
-        if (!hasAnyCredential) {
-          if (!mounted) return;
-          showDialog(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: const Text("保存失败"),
-              content: const Text("请至少填写一项关键信息：[ 昵称 | ID | 密码 | 邮箱 | 手机 ]"),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text("确认"),
-                ),
-              ],
-            ),
-          );
-          return;
-        }
-        // 脏检查
-        bool hasChanged =
-            _platformController.text != acc.platform ||
-            _nameController.text != acc.name ||
-            _urlController.text != acc.url ||
-            _userIdController.text != acc.userId ||
-            _emailController.text != acc.email ||
-            _pswdController.text != acc.pswd ||
-            _phoneController.text != acc.phone ||
-            _birthController.text !=
-                (acc.birth == null
-                    ? ""
-                    : DateFormat('yyyy-MM-dd').format(acc.birth!)) ||
-            _notesController.text != (acc.notes ?? "") ||
-            _signupDateController.text !=
-                (acc.signupDate == null
-                    ? ""
-                    : DateFormat('yyyy-MM-dd').format(acc.signupDate!)) ||
-            _currentStatus != acc.status ||
-            _currentRealName != acc.realName ||
-            !listEquals(_tempTags, acc.tags);
-        if (!hasChanged) {
-          setState(() => _isEditing = false);
-          debugPrint("account changed flag: $hasChanged");
-          return;
-        }
-        // 有变动 执行更新
-        final updated = Account(
-          id: acc.id, // 保持ID
-          platform: _platformController.text,
-          name: _nameController.text,
-          url: _urlController.text,
-          status: _currentStatus,
-          userId: _userIdController.text,
-          email: _emailController.text,
-          pswd: _pswdController.text,
-          phone: _phoneController.text,
-          birth: _birthController.text.isEmpty
-              ? null
-              : DateTime.tryParse(_birthController.text),
-          notes: _notesController.text,
-          signupDate: _signupDateController.text.isEmpty
-              ? null
-              : DateTime.tryParse(_signupDateController.text),
-          realName: _currentRealName,
-          tags: _tempTags,
-          lastModified: DateTime.now().toIso8601String(),
-        );
-        await StorageService().insertAccount(updated);
-        await refreshAccountList();
-        if (!mounted) return;
-        MessageUtil.show(context, "修改已保存");
-        setState(() => _isEditing = false);
-      }
-    } else {
-      setState(() => _isEditing = true); // 切换到编辑状态
-    }
-  }
-
-  // 构建统一卡片图标的首字母占位符
-  Widget _buildPlaceholder(
-    String platform,
-    Color statusColor,
-    double size, // 方块边长
-    double fontSize, // 字母大小
-    double borderRadius,
-  ) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: statusColor.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(color: statusColor.withValues(alpha: 0.2), width: 1),
-      ),
-      child: Center(
-        child: Text(
-          platform.isNotEmpty ? platform[0].toUpperCase() : "?",
-          style: TextStyle(
-            color: statusColor,
-            fontSize: fontSize,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // 构建详情面板顶部的平台大图标/占位符
-  Widget _buildLargeLogo(Account account) {
-    final Color color = _getStatusColor(account.status);
-    final String iconPath = p.join(_iconDirPath, "${account.id}.png");
-    final File iconFile = File(iconPath);
-    // 本地文件已存在，直接渲染图片
-    if (iconFile.existsSync()) {
-      return Container(
-        width: 64,
-        height: 64,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.2), width: 1.5),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(15),
-          child: Image.file(
-            iconFile,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) =>
-                _buildPlaceholder(account.platform, color, 64, 28, 16),
-          ),
-        ),
-      );
-    }
-    // 抓取期间/无网址时显示首字母占位符
-    return _buildPlaceholder(account.platform, color, 64, 28, 16);
-  }
-
-  // 构建卡片左侧的平台小图标/占位符
-  Widget _buildSmallLogo(Account acc, Color color) {
-    final String iconPath = p.join(_iconDirPath, "${acc.id}.png");
-    final File iconFile = File(iconPath);
-    // 本地文件已存在，直接渲染图片
-    if (iconFile.existsSync()) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.file(
-          iconFile,
-          width: 40,
-          height: 40,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) =>
-              _buildPlaceholder(acc.platform, color, 40, 18, 8), // 防御性处理
-        ),
-      );
-    }
-    final bool isAutoFetchEnabled =
-        SettingsService().get('auto_fetch_icons') == 'true';
-    bool isAccountValid = _allAccounts.any((element) => element.id == acc.id);
-    // 用户允许抓取时，有网址&本地不存在&并非正在被删除，发起后台静默抓取
-    if (isAutoFetchEnabled && isAccountValid && acc.url.isNotEmpty) {
-      IconService().fetchAndCacheIcon(acc.id, acc.url).then((_) {
-        if (mounted) setState(() {}); // 抓取成功后刷新UI
-      });
-    }
-    // 抓取期间/无网址时显示首字母占位符
-    return _buildPlaceholder(acc.platform, color, 40, 18, 8);
-  }
-
-  // 构建账户卡片组件
-  Widget _buildAccountCard(Account acc, int index) {
-    bool isSelected = _selectedAccountId == acc.id;
-    bool isPasswordVisible = _visiblePasswordIds.contains(acc.id);
-    Color statusColor = _getStatusColor(acc.status);
-    // c1-副标题: 昵称/ID
-    String firstColSub = acc.name.isNotEmpty
-        ? acc.name
-        : (acc.userId.isNotEmpty ? acc.userId : "-");
-    // c2-内容: 邮箱/手机
-    IconData secondColIcon = Icons.alternate_email;
-    String secondColText = "-";
-    Color secondColColor = Theme.of(context).colorScheme.onSurfaceVariant;
-    // 决定第1/2列显示什么属性
-    if (acc.email.isNotEmpty) {
-      secondColIcon = Icons.email_outlined;
-      secondColText = acc.email;
-    } else if (acc.phone.isNotEmpty) {
-      secondColIcon = Icons.phone_android_rounded; // 补全手机图标
-      secondColText = acc.phone;
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: InkWell(
-        onTap: () => _onAccountSelected(index),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          height: 60, // 单个条目行高
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isSelected
-                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)
-                  : Theme.of(context).colorScheme.outlineVariant,
-              width: isSelected ? 1.5 : 1,
-            ),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(11),
-            child: Row(
-              children: [
-                // 状态线
-                Container(width: 5, color: statusColor),
-                const SizedBox(width: 12),
-                // 平台Logo
-                _buildSmallLogo(acc, statusColor),
-                const SizedBox(width: 16),
-                // c1: 平台与昵称(固定比例)
-                Expanded(
-                  flex: 3,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        acc.platform,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        firstColSub,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: firstColSub == "-"
-                              ? Theme.of(context).colorScheme.onSurface
-                              : Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                // c2: 账号/邮箱(固定比例，始终存在)
-                Expanded(
-                  flex: 4,
-                  child: Row(
-                    children: [
-                      Icon(
-                        secondColIcon,
-                        size: 14,
-                        color: secondColText == "-"
-                            ? Colors.transparent
-                            : Theme.of(context).colorScheme.outline,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          secondColText,
-                          style: TextStyle(fontSize: 13, color: secondColColor),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // c3: 标签区(固定宽度140，始终存在)
-                SizedBox(
-                  width: 105,
-                  child: acc.tags.isEmpty
-                      ? const SizedBox.shrink()
-                      : Wrap(
-                          spacing: 4,
-                          runSpacing: 0,
-                          children: acc.tags
-                              .take(2)
-                              .map(
-                                (t) => Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .secondaryContainer
-                                        .withValues(alpha: 0.4),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    t,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSecondaryContainer,
-                                    ),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                ),
-                // c4: 密码与快捷操作
-                SizedBox(
-                  width: 180, // 固定右侧操作区宽度
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          isPasswordVisible ? acc.pswd : "••••••••",
-                          textAlign: TextAlign.right,
-                          overflow: TextOverflow.ellipsis, // 超出长度省略
-                          maxLines: 1,
-                          style: TextStyle(
-                            fontFamily: 'Consolas',
-                            color: isPasswordVisible
-                                ? Theme.of(context).colorScheme.primary
-                                : Theme.of(context).colorScheme.onSurfaceVariant
-                                      .withValues(alpha: 0.5),
-                            fontSize: 14,
-                            letterSpacing: isPasswordVisible ? 0.5 : 1.5,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: Icon(
-                          isPasswordVisible
-                              ? Icons.visibility
-                              : Icons.visibility_off,
-                          size: 18,
-                        ),
-                        padding: EdgeInsets.zero,
-                        onPressed: () => setState(() {
-                          isPasswordVisible
-                              ? _visiblePasswordIds.remove(acc.id)
-                              : _visiblePasswordIds.add(acc.id);
-                        }),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.copy_rounded, size: 18),
-                        padding: EdgeInsets.zero,
-                        onPressed: () {
-                          Clipboard.setData(ClipboardData(text: acc.pswd));
-                          MessageUtil.show(context, "密码已复制");
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // 构建详情页面板
-  Widget _buildDetailPanel(Account account) {
-    return Column(
-      children: [
-        _buildDetailHeader(account), // 头部
-        const Divider(height: 1),
-        Expanded(
-          child: Form(
-            key: _formKey, // 用于保存时的必填校验
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                // 分组1: 核心凭据
-                _buildEditableInfoRow("用户昵称", _nameController),
-                _buildEditableInfoRow("登录账号", _userIdController),
-                _buildEditableInfoRow("绑定邮箱", _emailController),
-                _buildEditableInfoRow(
-                  "绑定手机",
-                  _phoneController,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(11),
-                  ],
-                ),
-                _buildEditablePasswordRow(account), // 密码行
-                const Divider(),
-                // 分组2: 平台与标记
-                _buildEditableUrlRow(), // 网址展示/编辑
-                _buildEditableTagsRow(), // 标签编辑器
-                const Divider(),
-                // 分组3: 辅助信息
-                _buildEditableInfoRow(
-                  "生日",
-                  _birthController,
-                  isDateField: true,
-                ),
-                _buildEditableRealNameRow(), // 实名勾选/展示
-                _buildEditableInfoRow(
-                  "注册日期",
-                  _signupDateController,
-                  isDateField: true,
-                ),
-                _buildEditableInfoRow("备注", _notesController, maxLines: 5),
-                _buildInfoRow("最后修改于", DateUtil.format(account.lastModified)),
-                const SizedBox(height: 32),
-                // 按钮操作区
-                OutlinedButton.icon(
-                  onPressed: () => _confirmDelete(account),
-                  icon: Icon(
-                    Icons.delete_forever,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                  label: Text(
-                    "删除此条目",
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 50),
-                    side: BorderSide(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // 构建信息展示行
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 构建可编辑信息展示行
-  Widget _buildEditableInfoRow(
-    String label,
-    TextEditingController controller, {
-    bool isPassword = false,
-    bool isDateField = false,
-    int maxLines = 1,
-    List<TextInputFormatter>? inputFormatters,
-  }) {
-    final bool isMasked =
-        isPassword && !_visiblePasswordIds.contains(_selectedAccountId!);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontSize: 11,
-            ),
-          ),
-          const SizedBox(height: 4),
-          if (!_isEditing) // 只读状态
-            Container(
-              height: 24, // 统一高度
-              alignment: Alignment.centerLeft,
-              child: Text(
-                isMasked
-                    ? "••••••••"
-                    : (controller.text.isEmpty ? "-" : controller.text),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            )
-          else
-            SizedBox(
-              height: 24, // 保持与只读模式高度绝对一致
-              child: TextFormField(
-                controller: controller,
-                maxLines: 1, // 备注字段如果需要多行，单独处理
-                inputFormatters: inputFormatters,
-                obscureText: isMasked,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-                decoration: InputDecoration(
-                  isDense: true,
-                  contentPadding: EdgeInsets.zero, // 彻底消除内边距
-                  border: InputBorder.none, // 编辑时也隐藏下划线，保持清爽
-                  focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.primary,
-                      width: 1,
-                    ),
-                  ), // 仅在聚焦时显示下划线
-                  suffixIcon: isDateField
-                      ? IconButton(
-                          icon: Icon(
-                            Icons.calendar_today,
-                            size: 16,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          onPressed: () => _pickDate(context, controller),
-                          padding: EdgeInsets.zero,
-                        )
-                      : null,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  // 构建带跳转功能的展示行
-  Widget _buildInfoRowWithLink(String label, String url) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontSize: 12,
-            ),
-          ),
-          InkWell(
-            onTap: url.isEmpty ? null : () => launchUrl(Uri.parse(url)),
-            child: Text(
-              url.isEmpty ? "-" : url,
-              style: TextStyle(
-                fontSize: 14,
-                color: url.isEmpty
-                    ? Theme.of(context).colorScheme.onSurface
-                    : Theme.of(context).colorScheme.primary,
-                decoration: url.isEmpty ? null : TextDecoration.underline,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 构建密码切换行
-  Widget _buildEditablePasswordRow(Account acc) {
-    bool isVisible = _visiblePasswordIds.contains(acc.id);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "密码",
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontSize: 11,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Expanded(
-                child: _isEditing
-                    ? TextFormField(
-                        controller: _pswdController,
-                        // 当眼睛闭着时，输入框也应该是遮蔽状态
-                        obscureText: !isVisible,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontFamily: 'Consolas',
-                        ),
-                        decoration: const InputDecoration(
-                          isDense: true,
-                          contentPadding: EdgeInsets.symmetric(vertical: 8),
-                        ),
-                      )
-                    : Text(
-                        isVisible ? _pswdController.text : "••••••••",
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          fontFamily: 'Consolas',
-                        ),
-                      ),
-              ),
-              // 眼睛图标无论是否处于编辑模式都应允许切换可见性
-              IconButton(
-                icon: Icon(
-                  isVisible ? Icons.visibility : Icons.visibility_off,
-                  size: 18,
-                ),
-                onPressed: () {
-                  setState(() {
-                    if (isVisible) {
-                      _visiblePasswordIds.remove(acc.id);
-                    } else {
-                      _visiblePasswordIds.add(acc.id);
-                    }
-                  });
-                },
-              ),
-              // 根据_isEditing状态切换组件
-              if (!_isEditing) // 复制按钮仅在非编辑模式下显示
-                IconButton(
-                  icon: Icon(
-                    Icons.copy_all_rounded,
-                    size: 18,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  onPressed: () {
-                    Clipboard.setData(
-                      ClipboardData(text: _pswdController.text),
-                    );
-                    MessageUtil.show(context, "密码已复制");
-                  },
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 构建可编辑url展示行
-  Widget _buildEditableUrlRow() {
-    return _isEditing
-        ? _buildEditableInfoRow("网址", _urlController)
-        : _buildInfoRowWithLink("网址", _urlController.text);
-  }
-
-  // 构建可编辑标签行
-  Widget _buildEditableTagsRow() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "标签 (回车切分)",
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-            fontSize: 11,
-          ),
-        ),
-        const SizedBox(height: 8),
-        // 标签展示与输入区
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: _isEditing
-                ? Theme.of(
-                    context,
-                  ).colorScheme.onSurfaceVariant.withValues(alpha: 0.05)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            border: _isEditing
-                ? Border.all(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.primary.withValues(alpha: 0.3),
-                  )
-                : null,
-          ),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              // 已有的标签Chip
-              ..._tempTags.map(
-                (tag) => InputChip(
-                  label: Text(tag, style: const TextStyle(fontSize: 12)),
-                  shape: const StadiumBorder(),
-                  onDeleted: _isEditing
-                      ? () => setState(() => _tempTags.remove(tag))
-                      : null,
-                  onPressed: !_isEditing
-                      ? () {
-                          // 只读模式：点击标签直接搜索
-                          _searchController.text = tag;
-                          _filterAccounts(tag);
-                          _closePanel();
-                        }
-                      : null,
-                  deleteIcon: const Icon(Icons.cancel, size: 14),
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              ),
-              // 编辑模式下的实时输入框
-              if (_isEditing)
-                SizedBox(
-                  width: 100,
-                  child: TextField(
-                    controller: _tagsController,
-                    autofocus: false,
-                    decoration: const InputDecoration(
-                      hintText: "新标签...",
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(vertical: 4),
-                    ),
-                    style: const TextStyle(fontSize: 13),
-                    // 回车或输入逗号/空格时触发切分
-                    onSubmitted: (val) => _addNewTag(val),
-                    onChanged: (val) {
-                      // 这里可以实现即时的下拉建议 UI
-                    },
-                  ),
-                ),
-            ],
-          ),
-        ),
-        // 编辑模式下的智能建议区
-        if (_isEditing && _tagsController.text.isNotEmpty)
-          _buildTagSuggestions(),
-      ],
-    );
-  }
-
-  // 添加新标签并查重
-  void _addNewTag(String val, {int maxChars = 6}) {
-    final cleanTag = val.trim();
-    if (cleanTag.length > maxChars) {
-      MessageUtil.show(context, "标签长度不能超过 $maxChars 个字");
-      return;
-    }
-    if (cleanTag.isNotEmpty && !_tempTags.contains(cleanTag)) {
-      setState(() {
-        _tempTags.add(cleanTag);
-        _tagsController.clear();
-      });
-    }
-  }
-
-  // 辅助组件：显示智能建议
-  Widget _buildTagSuggestions() {
-    final suggestions = _globalTags
-        .where(
-          (t) =>
-              t.toLowerCase().contains(_tagsController.text.toLowerCase()) &&
-              !_tempTags.contains(t),
-        )
-        .toList();
-    if (suggestions.isEmpty) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Wrap(
-        spacing: 8,
-        children: suggestions
-            .take(5)
-            .map(
-              (s) => ActionChip(
-                label: Text(
-                  s,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-                onPressed: () => _addNewTag(s),
-                backgroundColor: Theme.of(
-                  context,
-                ).colorScheme.primary.withValues(alpha: 0.05),
-              ),
-            )
-            .toList(),
-      ),
-    );
-  }
-
-  // 构建实名标记行
-  Widget _buildEditableRealNameRow() {
-    if (!_isEditing) {
-      return _buildInfoRow("实名标记", _currentRealName ? "已实名" : "未实名");
-    }
-    return CheckboxListTile(
-      title: const Text("实名标记", style: TextStyle(fontSize: 14)),
-      value: _currentRealName,
-      contentPadding: EdgeInsets.zero,
-      onChanged: (v) => setState(() => _currentRealName = v ?? false),
-    );
-  }
-
-  // 构建表格中的彩色状态标签
-  Widget _buildStatusChip(int status) {
-    Color color;
-    switch (status) {
-      case 1:
-        color = Colors.green;
-        break;
-      case 2:
-        color = Colors.grey;
-        break;
-      case 3:
-        color = Colors.red;
-        break;
-      default:
-        color = Colors.orange;
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        _getStatusText(status),
-        style: TextStyle(color: color, fontSize: 10),
-      ),
-    );
-  }
-
-  // 将数字状态码转换为易读文字
-  String _getStatusText(int status) {
-    const map = {0: "未注册", 1: "使用中", 2: "已注销", 3: "无法使用"};
-    return map[status] ?? "未知";
-  }
-
-  // 获取状态对应的颜色
-  Color _getStatusColor(int status) {
-    switch (status) {
-      case 1:
-        return Colors.green.shade400; // 使用中
-      case 0:
-        return Colors.amber.shade400; // 未注册
-      case 2:
-        return Colors.grey.shade400; // 已注销
-      case 3:
-        return Colors.red.shade400; // 无法使用
-      default:
-        return Colors.blue.shade400;
-    }
-  }
-
-  // 日历选择器
-  Future<void> _pickDate(
-    BuildContext context,
-    TextEditingController controller,
-  ) async {
-    // 日历初始的选中日期
-    DateTime initialDate = DateTime.tryParse(controller.text) ?? DateTime.now();
-    // 调用官方日期选择器
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: initialDate,
-      firstDate: DateTime(1900), // 最早可选
-      lastDate: DateTime(2100), // 最晚可选
-      helpText: '选择日期',
-      cancelText: '取消',
-      confirmText: '确定',
-    );
-    // 如果用户选了日期且组件还挂载着
-    if (picked != null && mounted) {
-      setState(() {
-        // 格式化为yyyy-MM-dd
-        controller.text =
-            "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
-      });
     }
   }
 
