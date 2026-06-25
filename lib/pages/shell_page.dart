@@ -1,9 +1,11 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-25 16:25:04
+ * @LastEditTime: 2026-06-25 23:42:56
  * @Description: 主框架
  */
+
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
@@ -39,8 +41,10 @@ class _ShellPageState extends State<ShellPage> with WindowListener {
   void initState() {
     super.initState();
     _handleStartupSync();
-    windowManager.addListener(this); // 注册窗口监听
-    windowManager.setPreventClose(true); // 接管关闭按钮
+    if (Platform.isWindows) {
+      windowManager.addListener(this); // 注册窗口监听
+      windowManager.setPreventClose(true); // 接管关闭按钮
+    }
     // 页面列表
     _pages = [
       AccountListPage(key: _accountListPageKey), // index0
@@ -55,7 +59,7 @@ class _ShellPageState extends State<ShellPage> with WindowListener {
 
   @override
   void dispose() {
-    windowManager.removeListener(this); // 销毁监听
+    if (Platform.isWindows) windowManager.removeListener(this); // 销毁监听
     super.dispose();
   }
 

@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 00:55:11
- * @LastEditTime: 2026-06-24 01:21:09
+ * @LastEditTime: 2026-06-25 23:14:12
  * @Description: 构建字母索引导航栏
  */
 
@@ -51,7 +51,7 @@ class AlphabetIndexer extends StatelessWidget {
       'Z',
     ];
     return Container(
-      width: 25, // 宽度
+      width: alignRight ? 16 : 25, // 宽度
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -64,7 +64,7 @@ class AlphabetIndexer extends StatelessWidget {
                 child: Text(
                   char,
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: alignRight ? 9 : 10,
                     fontWeight: FontWeight.bold,
                     color: hasData
                         ? Theme.of(context).colorScheme.primary

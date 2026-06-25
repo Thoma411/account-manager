@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-25 18:01:40
+ * @LastEditTime: 2026-06-25 23:25:22
  * @Description: 账户信息页(查看页)
  */
 
@@ -988,7 +988,7 @@ class AccountListPageState extends State<AccountListPage> {
               onCopyPassword: () {
                 MessageUtil.show(context, "密码已复制");
               },
-              isMobile: false, // 电脑模式传入 false
+              isMobile: isMobile,
             );
           },
         ),
