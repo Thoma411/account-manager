@@ -1,8 +1,8 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 23:04:48
- * @LastEditTime: 2026-06-25 00:38:53
- * @Description: 
+ * @LastEditTime: 2026-06-26 00:17:12
+ * @Description: 账户信息详情页
  */
 
 import 'dart:io';
@@ -778,6 +778,67 @@ class _AccountDetailViewState extends State<AccountDetailView> {
     }
   }
 
+  // 构建手机端底部常驻操作栏
+  Widget _buildMobileBottomBar() {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      height: 70,
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        border: Border(
+          top: BorderSide(color: colorScheme.outlineVariant, width: 0.6),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: _isEditing
+            ? [
+                TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _isEditing = false;
+                      _initFields(widget.account); // 取消编辑: 回滚并重新填充
+                    });
+                  },
+                  icon: const Icon(Icons.cancel_outlined),
+                  label: const Text("取消"),
+                  style: TextButton.styleFrom(
+                    foregroundColor: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: _toggleEditMode, // 保存编辑: 触发验证与写入
+                  icon: const Icon(Icons.save_as_outlined),
+                  label: const Text("保存修改"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colorScheme.primaryContainer,
+                    foregroundColor: colorScheme.onPrimaryContainer,
+                  ),
+                ),
+              ]
+            : [
+                TextButton.icon(
+                  onPressed: _toggleEditMode, // 点击切换编辑状态
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text("编辑账户"),
+                  style: TextButton.styleFrom(
+                    foregroundColor: colorScheme.primary,
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () => _confirmDelete(widget.account), // 点击弹出删除
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text("删除条目"),
+                  style: TextButton.styleFrom(
+                    foregroundColor: colorScheme.error,
+                  ),
+                ),
+              ],
+      ),
+    );
+  }
+
   // 弹出删除确认对话框
   void _confirmDelete(Account account) {
     showDialog(
@@ -815,81 +876,174 @@ class _AccountDetailViewState extends State<AccountDetailView> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _buildDetailHeader(widget.account), // 头部
-        const Divider(height: 1),
-        Expanded(
-          child: Form(
-            key: _formKey, // 用于保存时的必填校验
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                // 分组1: 核心凭据
-                _buildEditableInfoRow("用户昵称", _nameController),
-                _buildEditableInfoRow("登录账号", _userIdController),
-                _buildEditableInfoRow("绑定邮箱", _emailController),
-                _buildEditableInfoRow(
-                  "绑定手机",
-                  _phoneController,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(11),
-                  ],
+    // 判断是否为手机模式
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isMobile = screenWidth < 600;
+    if (isMobile) {
+      return Scaffold(
+        // 底部常驻操作栏
+        bottomNavigationBar: _buildMobileBottomBar(),
+        body: Form(
+          key: _formKey,
+          child: CustomScrollView(
+            slivers: [
+              // 动画header
+              SliverAppBar(
+                expandedHeight: 180.0, // 展开高度
+                pinned: true, // 滚动到顶部后钉在顶端作为标准AppBar
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: widget.onClose, // 左上角返回
                 ),
-                _buildEditablePasswordRow(widget.account), // 密码行
-                const Divider(),
-                // 分组2: 平台与标记
-                _buildEditableUrlRow(), // 网址展示/编辑
-                _buildEditableTagsRow(), // 标签编辑器
-                const Divider(),
-                // 分组3: 辅助信息
-                _buildEditableInfoRow(
-                  "生日",
-                  _birthController,
-                  isDateField: true,
-                ),
-                _buildEditableRealNameRow(), // 实名勾选/展示
-                _buildEditableInfoRow(
-                  "注册日期",
-                  _signupDateController,
-                  isDateField: true,
-                ),
-                _buildEditableInfoRow("备注", _notesController, maxLines: 5),
-                _buildInfoRow(
-                  "最后修改于",
-                  DateUtil.format(widget.account.lastModified),
-                ),
-                const SizedBox(height: 32),
-                // 按钮操作区
-                OutlinedButton.icon(
-                  onPressed: () => _confirmDelete(widget.account),
-                  icon: Icon(
-                    Icons.delete_forever,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                  label: Text(
-                    "删除此条目",
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 50),
-                    side: BorderSide(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                flexibleSpace: FlexibleSpaceBar(
+                  centerTitle: true,
+                  // 编辑状态下隐藏标题，只读状态下显示平台名
+                  title: _isEditing
+                      ? null
+                      : Text(
+                          widget.account.platform,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                  background: Container(
+                    color: AccountUiUtils.getStatusColor(
+                      _currentStatus,
+                    ).withValues(alpha: 0.05),
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 20.0),
+                        child: _buildLargeLogo(widget.account),
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
-              ],
-            ),
+              ),
+              // 表单内容区
+              SliverPadding(
+                padding: const EdgeInsets.all(16),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    // 分组1: 核心凭据
+                    _buildEditableInfoRow("用户昵称", _nameController),
+                    _buildEditableInfoRow("登录账号", _userIdController),
+                    _buildEditableInfoRow("绑定邮箱", _emailController),
+                    _buildEditableInfoRow(
+                      "绑定手机",
+                      _phoneController,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(11),
+                      ],
+                    ),
+                    _buildEditablePasswordRow(widget.account), // 密码行
+                    const Divider(),
+                    // 分组2: 平台与标记
+                    _buildEditableUrlRow(), // 网址展示/编辑
+                    _buildEditableTagsRow(), // 标签编辑器
+                    const Divider(),
+                    // 分组3: 辅助信息
+                    _buildEditableInfoRow(
+                      "生日",
+                      _birthController,
+                      isDateField: true,
+                    ),
+                    _buildEditableRealNameRow(), // 实名勾选/展示
+                    _buildEditableInfoRow(
+                      "注册日期",
+                      _signupDateController,
+                      isDateField: true,
+                    ),
+                    _buildEditableInfoRow("备注", _notesController, maxLines: 5),
+                    _buildInfoRow(
+                      "最后修改于",
+                      DateUtil.format(widget.account.lastModified),
+                    ),
+                  ]),
+                ),
+              ),
+            ],
           ),
         ),
-      ],
-    );
+      );
+    } else {
+      return Column(
+        children: [
+          _buildDetailHeader(widget.account), // 头部
+          const Divider(height: 1),
+          Expanded(
+            child: Form(
+              key: _formKey, // 用于保存时的必填校验
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  // 分组1: 核心凭据
+                  _buildEditableInfoRow("用户昵称", _nameController),
+                  _buildEditableInfoRow("登录账号", _userIdController),
+                  _buildEditableInfoRow("绑定邮箱", _emailController),
+                  _buildEditableInfoRow(
+                    "绑定手机",
+                    _phoneController,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(11),
+                    ],
+                  ),
+                  _buildEditablePasswordRow(widget.account), // 密码行
+                  const Divider(),
+                  // 分组2: 平台与标记
+                  _buildEditableUrlRow(), // 网址展示/编辑
+                  _buildEditableTagsRow(), // 标签编辑器
+                  const Divider(),
+                  // 分组3: 辅助信息
+                  _buildEditableInfoRow(
+                    "生日",
+                    _birthController,
+                    isDateField: true,
+                  ),
+                  _buildEditableRealNameRow(), // 实名勾选/展示
+                  _buildEditableInfoRow(
+                    "注册日期",
+                    _signupDateController,
+                    isDateField: true,
+                  ),
+                  _buildEditableInfoRow("备注", _notesController, maxLines: 5),
+                  _buildInfoRow(
+                    "最后修改于",
+                    DateUtil.format(widget.account.lastModified),
+                  ),
+                  const SizedBox(height: 32),
+                  // 按钮操作区
+                  OutlinedButton.icon(
+                    onPressed: () => _confirmDelete(widget.account),
+                    icon: Icon(
+                      Icons.delete_forever,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    label: Text(
+                      "删除此条目",
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 50),
+                      side: BorderSide(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
   }
 }

@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-25 23:25:22
+ * @LastEditTime: 2026-06-26 00:02:45
  * @Description: 账户信息页(查看页)
  */
 
@@ -188,10 +188,41 @@ class AccountListPageState extends State<AccountListPage> {
   // 点击账户卡片时触发
   void _onAccountSelected(int index) {
     final acc = _displayAccounts[index];
-    setState(() {
-      _selectedAccountId = acc.id; // 记录被选中的账户ID
-      _isPanelOpen = true; // 展开右侧面板
-    });
+    // 判断是否为手机模式
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isMobile = screenWidth < 600;
+
+    if (isMobile) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => Scaffold(
+            body: SafeArea(
+              child: AccountDetailView(
+                account: acc,
+                iconDirPath: _iconDirPath,
+                globalTags: _globalTags,
+                onClose: () => Navigator.of(context).pop(), // 返回: Pop路由
+                onSaveSuccess: () => refreshAccountList(),
+                onDeleteSuccess: () {
+                  refreshAccountList();
+                  Navigator.of(context).pop();
+                },
+                onTagClicked: (tag) {
+                  _searchController.text = tag;
+                  _filterAccounts(tag);
+                  Navigator.of(context).pop(); // 返回列表页检索
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+    } else {
+      setState(() {
+        _selectedAccountId = acc.id; // 记录被选中的账户ID
+        _isPanelOpen = true; // 展开右侧面板
+      });
+    }
   }
 
   // 收起右侧详情页
