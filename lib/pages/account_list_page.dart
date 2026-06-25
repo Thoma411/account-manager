@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-25 17:09:48
+ * @LastEditTime: 2026-06-25 18:01:40
  * @Description: 账户信息页(查看页)
  */
 
@@ -783,7 +783,7 @@ class AccountListPageState extends State<AccountListPage> {
   }
 
   // 构建空库UI界面
-  Widget _buildEmptyStateUI() {
+  Widget _buildEmptyStateUI(bool isMobile) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -807,34 +807,57 @@ class AccountListPageState extends State<AccountListPage> {
           ),
           const SizedBox(height: 40),
 
-          // 如果数据库不存在，显示两个核心按钮
+          // 本地无库显示两个按钮
           if (!_isDbCreated)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: () {
-                    _showSetupMasterPasswordDialog();
-                  },
-                  icon: const Icon(Icons.add_moderator),
-                  label: const Text("创建新数据库"),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(180, 50),
+            isMobile
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: _showSetupMasterPasswordDialog,
+                        icon: const Icon(Icons.add_moderator),
+                        label: const Text("创建新数据库"),
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(200, 50),
+                        ),
+                      ),
+                      const SizedBox(height: 16), // 垂直间距
+                      OutlinedButton.icon(
+                        onPressed: _showRestoreFromCloudDialog,
+                        icon: const Icon(Icons.cloud_download_outlined),
+                        label: const Text("从云端恢复备份"),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(200, 50),
+                        ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          _showSetupMasterPasswordDialog();
+                        },
+                        icon: const Icon(Icons.add_moderator),
+                        label: const Text("创建新数据库"),
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(180, 50),
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          _showRestoreFromCloudDialog();
+                        },
+                        icon: const Icon(Icons.cloud_download_outlined),
+                        label: const Text("从云端恢复备份"),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(180, 50),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 20),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    _showRestoreFromCloudDialog();
-                  },
-                  icon: const Icon(Icons.cloud_download_outlined),
-                  label: const Text("从云端恢复备份"),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(180, 50),
-                  ),
-                ),
-              ],
-            ),
         ],
       ),
     );
@@ -928,6 +951,50 @@ class AccountListPageState extends State<AccountListPage> {
     const double headerHeight = 70.0; // 搜索框高度
     const double listTopGap = 3.0; // 搜索框与卡片列表的间距
 
+    // 字母索引导航栏
+    final Widget indexerWidget = Padding(
+      padding: const EdgeInsets.only(top: listTopGap),
+      child: AlphabetIndexer(
+        alphabetIndexMap: _alphabetIndexMap,
+        onLetterSelected: _jumpToSection,
+        alignRight: false,
+      ),
+    );
+    // 账户卡片列表
+    final Widget listWidget = Expanded(
+      child: RefreshIndicator(
+        onRefresh: refreshAccountList, // 下拉刷新回调
+        child: ListView.builder(
+          controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.only(top: listTopGap, bottom: 8),
+          itemCount: _displayAccounts.length,
+          itemExtent: 68.0, // Container高度60 + 上下边距4*2
+          itemBuilder: (context, index) {
+            final acc = _displayAccounts[index];
+            return AccountCard(
+              account: acc,
+              isSelected: _selectedAccountId == acc.id,
+              isPasswordVisible: _visiblePasswordIds.contains(acc.id),
+              iconDirPath: _iconDirPath,
+              onTap: () => _onAccountSelected(index),
+              onTogglePassword: () {
+                setState(() {
+                  _visiblePasswordIds.contains(acc.id)
+                      ? _visiblePasswordIds.remove(acc.id)
+                      : _visiblePasswordIds.add(acc.id);
+                });
+              },
+              onCopyPassword: () {
+                MessageUtil.show(context, "密码已复制");
+              },
+              isMobile: false, // 电脑模式传入 false
+            );
+          },
+        ),
+      ),
+    );
+
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
@@ -963,72 +1030,12 @@ class AccountListPageState extends State<AccountListPage> {
                           const SizedBox(height: headerHeight),
                           Expanded(
                             child: (!_isDbCreated || _allAccounts.isEmpty)
-                                ? _buildEmptyStateUI() // 当且仅当未建库/内容为空时显示引导
+                                ? _buildEmptyStateUI(isMobile) // 未建库/内容为空时显示引导
                                 : Row(
-                                    children: [
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                          top: listTopGap,
-                                        ),
-                                        child: AlphabetIndexer(
-                                          alphabetIndexMap: _alphabetIndexMap,
-                                          onLetterSelected: _jumpToSection,
-                                          alignRight: false,
-                                        ),
-                                      ), // 字母索引导航栏
-                                      Expanded(
-                                        child: RefreshIndicator(
-                                          onRefresh:
-                                              refreshAccountList, // 下拉刷新回调
-                                          child: ListView.builder(
-                                            controller: _scrollController,
-                                            physics:
-                                                const AlwaysScrollableScrollPhysics(),
-                                            padding: const EdgeInsets.only(
-                                              top: listTopGap,
-                                              bottom: 8,
-                                            ),
-                                            itemCount: _displayAccounts.length,
-                                            itemExtent:
-                                                68.0, // Container高度60 + 上下边距4*2
-                                            itemBuilder: (context, index) {
-                                              final acc =
-                                                  _displayAccounts[index];
-                                              return AccountCard(
-                                                account: acc,
-                                                isSelected:
-                                                    _selectedAccountId ==
-                                                    acc.id,
-                                                isPasswordVisible:
-                                                    _visiblePasswordIds
-                                                        .contains(acc.id),
-                                                iconDirPath: _iconDirPath,
-                                                onTap: () =>
-                                                    _onAccountSelected(index),
-                                                onTogglePassword: () {
-                                                  setState(() {
-                                                    _visiblePasswordIds
-                                                            .contains(acc.id)
-                                                        ? _visiblePasswordIds
-                                                              .remove(acc.id)
-                                                        : _visiblePasswordIds
-                                                              .add(acc.id);
-                                                  });
-                                                },
-                                                onCopyPassword: () {
-                                                  MessageUtil.show(
-                                                    context,
-                                                    "密码已复制",
-                                                  );
-                                                },
-                                                isMobile: false, // 电脑模式传入 false
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                    children: isMobile
+                                        ? [listWidget, indexerWidget]
+                                        : [indexerWidget, listWidget],
+                                  ), // 手机端字母索引在右侧
                           ),
                           // 底栏
                           Container(
