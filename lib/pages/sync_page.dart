@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 00:24:18
- * @LastEditTime: 2026-06-24 00:29:52
+ * @LastEditTime: 2026-06-30 23:28:06
  * @Description: 云同步页
  */
 
@@ -270,161 +270,6 @@ class SyncPageState extends State<SyncPage> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.all(32.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "云同步仪表盘",
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 24),
-          // 顶部对比卡片
-          Row(
-            children: [
-              _buildStatusCard(
-                "当前设备",
-                Icons.computer,
-                _localTime,
-                _localSize,
-                colorScheme.primary,
-              ),
-              _buildSyncIndicator(),
-              _buildStatusCard(
-                "云端备份",
-                Icons.cloud_done,
-                _remoteTime,
-                _remoteSize,
-                colorScheme.primary,
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
-          // 下方: 左操作, 右日志
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 左侧操作区 (Flex 2)
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildActionButton(
-                        label: _getSmartSyncLabel(),
-                        icon: Icons.sync,
-                        isPrimary: true,
-                        onPressed: _handleSmartSync,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        "系统将根据修改时间自动决定上传或下载",
-                        style: TextStyle(
-                          color: colorScheme.onSurfaceVariant,
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      _buildActionButton(
-                        label: "测试云端连接",
-                        icon: Icons.lan_outlined,
-                        onPressed: _handlePing,
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildActionButton(
-                              label: "强制上传",
-                              icon: Icons.upload,
-                              onPressed: () => _executeSync(true),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: _buildActionButton(
-                              label: "强制下载",
-                              icon: Icons.download,
-                              onPressed: () => _executeSync(false),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 40), // 左右间距
-                // 右侧日志区 (Flex 3)
-                Expanded(
-                  flex: 3,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest.withValues(
-                        alpha: 0.3,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: colorScheme.outlineVariant),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.history,
-                                    size: 18,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    "同步日志",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              if (_logs.isNotEmpty) // 仅在有日志时显示清空按钮
-                                IconButton(
-                                  onPressed: _clearLogs,
-                                  icon: Icon(
-                                    Icons.delete_sweep_outlined,
-                                    size: 20,
-                                    color: colorScheme.onSurfaceVariant,
-                                  ),
-                                  tooltip: "清空所有记录",
-                                  splashRadius: 20,
-                                ),
-                            ],
-                          ),
-                        ),
-                        const Divider(height: 1),
-                        Expanded(child: _buildLogList()),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   // 处理具体的物理同步动作
   Future<void> _executeSync(bool isUpload) async {
     final actionName = isUpload ? "上传" : "下载";
@@ -624,5 +469,168 @@ class SyncPageState extends State<SyncPage> {
               color: Theme.of(context).colorScheme.primary,
             ),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    // 判断是否为手机模式
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isMobile = screenWidth < 600;
+    // 顶部对比卡片
+    Widget statusSection = Row(
+      children: [
+        _buildStatusCard(
+          "当前设备",
+          Icons.computer,
+          _localTime,
+          _localSize,
+          colorScheme.primary,
+        ),
+        _buildSyncIndicator(),
+        _buildStatusCard(
+          "云端备份",
+          Icons.cloud_done,
+          _remoteTime,
+          _remoteSize,
+          colorScheme.primary,
+        ),
+      ],
+    );
+    // 操作按钮组
+    Widget actionSection = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildActionButton(
+          label: _getSmartSyncLabel(),
+          icon: Icons.sync,
+          isPrimary: true,
+          onPressed: _handleSmartSync,
+        ),
+        const SizedBox(height: 12),
+        Text(
+          "系统将根据修改时间自动决定上传或下载",
+          style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
+        ),
+        SizedBox(height: isMobile ? 12 : 32),
+        _buildActionButton(
+          label: "测试云端连接",
+          icon: Icons.lan_outlined,
+          onPressed: _handlePing,
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionButton(
+                label: "强制上传",
+                icon: Icons.upload,
+                onPressed: () => _executeSync(true),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: _buildActionButton(
+                label: "强制下载",
+                icon: Icons.download,
+                onPressed: () => _executeSync(false),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+    // 同步日志框
+    Widget logSection = Container(
+      height: isMobile ? 300 : double.infinity,
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.history,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      "同步日志",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+                if (_logs.isNotEmpty) // 仅在有日志时显示清空按钮
+                  IconButton(
+                    onPressed: _clearLogs,
+                    icon: Icon(
+                      Icons.delete_sweep_outlined,
+                      size: 20,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    tooltip: "清空所有记录",
+                    splashRadius: 20,
+                  ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(child: _buildLogList()),
+        ],
+      ),
+    );
+
+    Widget content = Padding(
+      padding: const EdgeInsets.all(32.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "云同步仪表盘",
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 24),
+          statusSection,
+          const SizedBox(height: 32),
+          isMobile
+              ? Column(
+                  // 手机端：上操作, 下日志
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    actionSection,
+                    const SizedBox(height: 24),
+                    logSection,
+                  ],
+                )
+              : Expanded(
+                  child: Row(
+                    // 电脑端: 左操作, 右日志
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 左侧操作区 (Flex 2)
+                      Expanded(flex: 2, child: actionSection),
+                      const SizedBox(width: 40), // 左右间距
+                      // 右侧日志区 (Flex 3)
+                      Expanded(flex: 3, child: logSection),
+                    ],
+                  ),
+                ),
+        ],
+      ),
+    );
+    return isMobile ? SingleChildScrollView(child: content) : content;
   }
 }
