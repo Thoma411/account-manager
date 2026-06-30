@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 00:24:18
- * @LastEditTime: 2026-06-30 23:28:06
+ * @LastEditTime: 2026-07-01 00:15:17
  * @Description: 云同步页
  */
 
@@ -15,6 +15,7 @@ import '../services/storage_service.dart';
 import '../services/security_service.dart';
 import '../services/webdav_service.dart';
 import '../utils/utils.dart';
+import '../widgets/account_ui_utils.dart';
 
 // 云同步界面
 class SyncPage extends StatefulWidget {
@@ -474,9 +475,8 @@ class SyncPageState extends State<SyncPage> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    // 判断是否为手机模式
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    // 动态感知屏幕宽度
+    final bool isMobile = AccountUiUtils.isMobile(context);
     // 顶部对比卡片
     Widget statusSection = Row(
       children: [

@@ -1,14 +1,38 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 22:13:52
- * @LastEditTime: 2026-06-24 22:27:25
+ * @LastEditTime: 2026-07-01 00:35:17
  * @Description: 视觉样式&辅助组件工具类
  */
 
+import 'dart:io';
 import 'package:flutter/material.dart';
+
+import '../services/settings_service.dart';
 
 class AccountUiUtils {
   AccountUiUtils._();
+
+  // 根据设备选择UI显示/展示模式
+  static bool isMobile(BuildContext context) {
+    // 电脑端无论如何都展示电脑端布局
+    final bool isDesktop =
+        Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+    if (isDesktop) return false;
+
+    // 如果是移动端设备（Android/iOS）
+    final bool isMobilePlatform = Platform.isAndroid || Platform.isIOS;
+    if (isMobilePlatform) {
+      final bool isTablet = MediaQuery.of(context).size.shortestSide >= 600;
+      if (isTablet) {
+        final bool forceDesktop =
+            SettingsService().get('force_desktop_mode') == 'true';
+        return !forceDesktop;
+      }
+      return true; // 普通手机：强制显示手机布局
+    }
+    return true; // 兜底，其余平台默认展示手机布局
+  }
 
   // 将数字状态码转换为易读文字
   static String getStatusText(int status) {

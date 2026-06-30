@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-26 00:02:45
+ * @LastEditTime: 2026-07-01 00:14:19
  * @Description: 账户信息页(查看页)
  */
 
@@ -16,6 +16,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 
 import '../models/account.dart';
+import '../widgets/account_ui_utils.dart';
 import '../widgets/alphabet_indexer.dart';
 import '../widgets/account_card.dart';
 import '../widgets/account_detail_view.dart';
@@ -188,9 +189,8 @@ class AccountListPageState extends State<AccountListPage> {
   // 点击账户卡片时触发
   void _onAccountSelected(int index) {
     final acc = _displayAccounts[index];
-    // 判断是否为手机模式
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    // 动态感知屏幕宽度
+    final bool isMobile = AccountUiUtils.isMobile(context);
 
     if (isMobile) {
       Navigator.of(context).push(
@@ -974,9 +974,8 @@ class AccountListPageState extends State<AccountListPage> {
 
   @override
   Widget build(BuildContext context) {
-    // 动态获取当前是否为手机窄屏模式
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    // 动态感知屏幕宽度
+    final bool isMobile = AccountUiUtils.isMobile(context);
 
     const double panelWidth = 400; // 定义详情页宽度
     const double headerHeight = 70.0; // 搜索框高度

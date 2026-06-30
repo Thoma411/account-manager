@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-04-08 17:43:09
- * @LastEditTime: 2026-06-18 00:20:07
+ * @LastEditTime: 2026-06-30 23:49:18
  * @Description: 设置
  */
 
@@ -28,6 +28,7 @@ class SettingsService {
     'last_synced_revision', // 上传下载时的本地逻辑版本快照
     'last_synced_etag', // 上传下载成功后保存的云端eTag
     'auto_fetch_icons', // 自动抓取图标
+    'force_desktop_mode', // 桌面模式
   };
 
   // 1. 初始化：应用启动即调用

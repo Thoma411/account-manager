@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-25 23:42:56
+ * @LastEditTime: 2026-07-01 00:13:25
  * @Description: 主框架
  */
 
@@ -15,6 +15,7 @@ import '../services/security_service.dart';
 import '../services/settings_service.dart';
 import '../services/webdav_service.dart';
 import '../utils/utils.dart';
+import '../widgets/account_ui_utils.dart';
 import 'login_page.dart';
 import 'account_list_page.dart';
 import 'sync_page.dart';
@@ -51,8 +52,10 @@ class _ShellPageState extends State<ShellPage> with WindowListener {
       SyncPage(key: _syncPageKey), // index1
       SettingsPage(
         key: _settingsPageKey,
-        onDataChanged: () =>
-            _accountListPageKey.currentState?.refreshAccountList(),
+        onDataChanged: () {
+          _accountListPageKey.currentState?.refreshAccountList();
+          setState(() {});
+        },
       ), // index2
     ];
   }
@@ -92,11 +95,10 @@ class _ShellPageState extends State<ShellPage> with WindowListener {
   @override
   Widget build(BuildContext context) {
     // 动态感知屏幕宽度
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    final bool isMobile = AccountUiUtils.isMobile(context);
 
     return Scaffold(
-      // 手机模式: 启用标准底栏; 电脑模式: 设为null
+      // 手机模式: 启用标准底栏; 桌面模式: 设为null
       bottomNavigationBar: isMobile
           ? NavigationBar(
               selectedIndex: _selectedIndex,
@@ -156,7 +158,7 @@ class _ShellPageState extends State<ShellPage> with WindowListener {
                     ],
                   ),
             if (!isMobile)
-              // 仅电脑模式下渲染显示按钮
+              // 仅桌面模式下渲染显示按钮
               Positioned(
                 left: 15, // 距离左边距离
                 bottom: 25, // 距离底部距离

@@ -1,10 +1,11 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 00:17:53
- * @LastEditTime: 2026-06-24 00:32:05
+ * @LastEditTime: 2026-07-01 00:29:04
  * @Description: 设置页
  */
 
+import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -539,6 +540,15 @@ class SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final bool isLoggedIn = _hasDb && SecurityService().currentDataKey != null;
     final colorScheme = Theme.of(context).colorScheme;
+    // 桌面模式相关判定
+    final bool isDesktopDevice =
+        Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+    final bool isTabletDevice =
+        (Platform.isAndroid || Platform.isIOS) &&
+        MediaQuery.of(context).size.shortestSide >= 600;
+    final bool forceDesktopSetting =
+        _settings.get('force_desktop_mode') == 'true';
+    final bool showAsEnabled = isDesktopDevice || forceDesktopSetting;
 
     return ListView(
       padding: const EdgeInsets.all(24),
@@ -554,6 +564,19 @@ class SettingsPageState extends State<SettingsPage> {
           value: _isDarkMode,
           onChanged: _toggleDarkMode,
           secondary: const Icon(Icons.brightness_6),
+        ),
+        const Divider(),
+        SwitchListTile(
+          title: const Text("桌面模式"),
+          subtitle: const Text("以电脑端宽屏布局展示 UI（仅平板有效）"),
+          secondary: const Icon(Icons.computer_outlined),
+          value: showAsEnabled,
+          onChanged: isTabletDevice
+              ? (val) async {
+                  await _settings.set('force_desktop_mode', val.toString());
+                  widget.onDataChanged?.call(); // 通知大框架重构
+                }
+              : null,
         ),
         const Divider(),
         SwitchListTile(

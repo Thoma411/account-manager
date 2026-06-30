@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 23:04:48
- * @LastEditTime: 2026-06-30 22:30:31
+ * @LastEditTime: 2026-07-01 00:14:34
  * @Description: 账户信息详情页
  */
 
@@ -954,9 +954,8 @@ class _AccountDetailViewState extends State<AccountDetailView> {
 
   @override
   Widget build(BuildContext context) {
-    // 判断是否为手机模式
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 600;
+    // 动态感知屏幕宽度
+    final bool isMobile = AccountUiUtils.isMobile(context);
     if (isMobile) {
       return Scaffold(
         // 底部常驻操作栏
