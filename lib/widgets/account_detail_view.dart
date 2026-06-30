@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 23:04:48
- * @LastEditTime: 2026-06-26 00:17:12
+ * @LastEditTime: 2026-06-30 22:30:31
  * @Description: 账户信息详情页
  */
 
@@ -266,6 +266,28 @@ class _AccountDetailViewState extends State<AccountDetailView> {
     }
     // 抓取期间/无网址时显示首字母占位符
     return AccountUiUtils.buildPlaceholder(account.platform, color, 64, 28, 16);
+  }
+
+  // 构建详情页内小图标
+  Widget _buildSmallLogo(Account acc, Color color) {
+    final String iconPath = p.join(widget.iconDirPath, "${acc.id}.png");
+    final File iconFile = File(iconPath);
+    // 本地图片文件存在，直接读取渲染
+    if (iconFile.existsSync()) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.file(
+          iconFile,
+          width: 40,
+          height: 40,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) =>
+              AccountUiUtils.buildPlaceholder(acc.platform, color, 40, 18, 8),
+        ),
+      );
+    }
+    // 本地不存在，返回首字母占位符
+    return AccountUiUtils.buildPlaceholder(acc.platform, color, 40, 18, 8);
   }
 
   // 构建信息展示行
@@ -839,6 +861,62 @@ class _AccountDetailViewState extends State<AccountDetailView> {
     );
   }
 
+  // 构建仅编辑模式下呈现大列表顶端的编辑工作区
+  Widget _buildMobileEditingHeaderCard() {
+    final Color color = AccountUiUtils.getStatusColor(_currentStatus);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12.0),
+      child: Row(
+        children: [
+          _buildSmallLogo(widget.account, color),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextFormField(
+                  controller: _platformController,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  decoration: const InputDecoration(
+                    hintText: "平台名称",
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(vertical: 4),
+                    border: InputBorder.none,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                // 状态修改下拉菜单
+                SizedBox(
+                  height: 30,
+                  child: DropdownButton<int>(
+                    value: _currentStatus,
+                    isDense: true,
+                    underline: const SizedBox(),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 1, child: Text("使用中")),
+                      DropdownMenuItem(value: 0, child: Text("未注册")),
+                      DropdownMenuItem(value: 2, child: Text("已注销")),
+                      DropdownMenuItem(value: 3, child: Text("无法使用")),
+                    ],
+                    onChanged: (v) => setState(() => _currentStatus = v ?? 1),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // 弹出删除确认对话框
   void _confirmDelete(Account account) {
     showDialog(
@@ -889,42 +967,57 @@ class _AccountDetailViewState extends State<AccountDetailView> {
             slivers: [
               // 动画header
               SliverAppBar(
-                expandedHeight: 180.0, // 展开高度
+                expandedHeight: _isEditing ? null : 180.0, // 展开高度
                 pinned: true, // 滚动到顶部后钉在顶端作为标准AppBar
                 leading: IconButton(
                   icon: const Icon(Icons.arrow_back),
                   onPressed: widget.onClose, // 左上角返回
                 ),
-                flexibleSpace: FlexibleSpaceBar(
-                  centerTitle: true,
-                  // 编辑状态下隐藏标题，只读状态下显示平台名
-                  title: _isEditing
-                      ? null
-                      : Text(
-                          widget.account.platform,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                title: _isEditing
+                    ? const Text(
+                        "编辑账户",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      )
+                    : null,
+                flexibleSpace: _isEditing
+                    ? null
+                    : FlexibleSpaceBar(
+                        centerTitle: true,
+                        // 编辑状态下隐藏标题，只读状态下显示平台名
+                        title: _isEditing
+                            ? null
+                            : Text(
+                                widget.account.platform,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                        background: Container(
+                          color: AccountUiUtils.getStatusColor(
+                            _currentStatus,
+                          ).withValues(alpha: 0.05),
+                          child: Center(
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 20.0),
+                              child: _buildLargeLogo(widget.account),
+                            ),
                           ),
                         ),
-                  background: Container(
-                    color: AccountUiUtils.getStatusColor(
-                      _currentStatus,
-                    ).withValues(alpha: 0.05),
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 20.0),
-                        child: _buildLargeLogo(widget.account),
                       ),
-                    ),
-                  ),
-                ),
               ),
               // 表单内容区
               SliverPadding(
                 padding: const EdgeInsets.all(16),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
+                    if (_isEditing) ...[
+                      _buildMobileEditingHeaderCard(),
+                      const Divider(),
+                    ],
                     // 分组1: 核心凭据
                     _buildEditableInfoRow("用户昵称", _nameController),
                     _buildEditableInfoRow("登录账号", _userIdController),
@@ -949,12 +1042,12 @@ class _AccountDetailViewState extends State<AccountDetailView> {
                       _birthController,
                       isDateField: true,
                     ),
-                    _buildEditableRealNameRow(), // 实名勾选/展示
                     _buildEditableInfoRow(
                       "注册日期",
                       _signupDateController,
                       isDateField: true,
                     ),
+                    _buildEditableRealNameRow(), // 实名勾选/展示
                     _buildEditableInfoRow("备注", _notesController, maxLines: 5),
                     _buildInfoRow(
                       "最后修改于",
@@ -1002,12 +1095,12 @@ class _AccountDetailViewState extends State<AccountDetailView> {
                     _birthController,
                     isDateField: true,
                   ),
-                  _buildEditableRealNameRow(), // 实名勾选/展示
                   _buildEditableInfoRow(
                     "注册日期",
                     _signupDateController,
                     isDateField: true,
                   ),
+                  _buildEditableRealNameRow(), // 实名勾选/展示
                   _buildEditableInfoRow("备注", _notesController, maxLines: 5),
                   _buildInfoRow(
                     "最后修改于",
