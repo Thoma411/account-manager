@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:42:38
- * @LastEditTime: 2026-06-11 17:02:40
+ * @LastEditTime: 2026-07-01 16:35:33
  * @Description: CSV处理
  */
 
@@ -10,6 +10,7 @@ import 'dart:io';
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
+
 import '../models/account.dart';
 import 'storage_service.dart';
 
@@ -29,8 +30,6 @@ class CsvService {
       }
       // 2. 读取文件
       final File file = File(result.files.single.path!);
-      // 注意：Windows Excel默认导出的CSV往往是GBK编码
-      // 如果读取时报错"Invalid UTF-8"，请尝试使用latin1或安装charset包处理GBK
       final String csvContent = await file.readAsString(encoding: utf8);
       // 3. 解析CSV
       List<List<dynamic>> rows = const CsvToListConverter().convert(csvContent);
@@ -70,12 +69,18 @@ class CsvService {
   }
 
   // 导出为CSV
-  Future<bool> exportToCsv() async {
+  Future<int?> exportToCsv() async {
     try {
       // 1. 获取全量数据
       final accounts = await _storageService.getAllAccounts();
       if (accounts.isEmpty) throw Exception("数据库中暂无数据可导出");
-      // 2. 构建CSV二维列表
+      // 按a-z排序
+      accounts.sort((a, b) {
+        int cmp = a.platformPinyin.compareTo(b.platformPinyin); // 比较拼音
+        if (cmp == 0) cmp = a.platform.compareTo(b.platform); // 拼音相同比较原字符
+        return cmp; // 默认升序
+      });
+      // 2. 构建CSV列表
       List<List<dynamic>> csvData = [
         [
           "platform",
@@ -96,21 +101,27 @@ class CsvService {
       csvData.addAll(accounts.map((acc) => acc.toCsvRow())); // 填充内容
       // 3. 转换为CSV字符串
       String csvString = const ListToCsvConverter().convert(csvData);
+      final List<int> bom = [0xEF, 0xBB, 0xBF]; // 添加UTF-8 BOM头
+      final List<int> content = utf8.encode(csvString);
+      final Uint8List fileBytes = Uint8List.fromList(
+        bom + content,
+      ); // 转换成标准Uint8List
       // 4. 调用保存对话框
       String? outputFile = await FilePicker.platform.saveFile(
         dialogTitle: '选择导出路径',
         fileName: 'vault_export_${DateTime.now().millisecondsSinceEpoch}.csv',
         type: FileType.custom,
         allowedExtensions: ['csv'],
+        bytes: fileBytes,
       );
-      if (outputFile == null) return false; // 用户取消
-      // 5. 写入文件
-      // 让Windows Excel自动识别为UTF-8编码，防止中文乱码
-      final List<int> bom = [0xEF, 0xBB, 0xBF]; // 添加UTF-8 BOM头
-      final List<int> content = utf8.encode(csvString);
-      final File file = File(outputFile);
-      await file.writeAsBytes(bom + content);
-      return true;
+      if (outputFile == null) return null; // 用户取消
+      // 5. 写入文件(仅在桌面端手动writeAsBytes写盘)
+      if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+        // 让Windows Excel自动识别为UTF-8编码，防止中文乱码
+        final File file = File(outputFile);
+        await file.writeAsBytes(fileBytes);
+      }
+      return accounts.length;
     } catch (e) {
       debugPrint("导出失败: $e");
       rethrow;

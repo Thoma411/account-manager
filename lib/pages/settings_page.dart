@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 00:17:53
- * @LastEditTime: 2026-07-01 00:29:04
+ * @LastEditTime: 2026-07-01 16:49:03
  * @Description: 设置页
  */
 
@@ -198,9 +198,10 @@ class SettingsPageState extends State<SettingsPage> {
 
   // 导出警告对话框
   void _handleExport() {
+    final outerContext = context;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text("导出安全警告"),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -219,19 +220,42 @@ class SettingsPageState extends State<SettingsPage> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text("取消"),
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context); // 先关警告框
+              Navigator.pop(dialogContext); // 先关警告框
               try {
-                bool success = await CsvService().exportToCsv();
-                if (success && context.mounted) {
-                  MessageUtil.show(context, "数据已成功导出至本地");
+                final count = await CsvService().exportToCsv();
+                if (count != null && context.mounted) {
+                  ScaffoldMessenger.of(outerContext).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        "成功导出账户 $count 条",
+                        textAlign: TextAlign.center,
+                      ),
+                      duration: const Duration(seconds: 3),
+                      width: 200,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
                 }
               } catch (e) {
-                if (context.mounted) MessageUtil.show(context, "导出失败: $e");
+                if (context.mounted) {
+                  ScaffoldMessenger.of(outerContext).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        "导出失败：${e.toString().replaceAll('Exception: ', '')}",
+                        textAlign: TextAlign.center,
+                      ),
+                      duration: const Duration(seconds: 3),
+                      width: 320,
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: Theme.of(outerContext).colorScheme.error,
+                    ),
+                  );
+                }
               }
             },
             style: ElevatedButton.styleFrom(
