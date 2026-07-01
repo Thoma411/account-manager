@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-15 16:34:15
- * @LastEditTime: 2026-06-15 18:50:22
+ * @LastEditTime: 2026-07-01 14:30:49
  * @Description: 抓取网页icon
  */
 
@@ -17,6 +17,8 @@ class IconService {
   static final IconService _instance = IconService._internal();
   factory IconService() => _instance;
   IconService._internal();
+
+  final Set<String> _pendingFetches = {}; // 正在抓取的账户ID
 
   // 获取本地图标存储目录
   Future<Directory> get _iconDir async {
@@ -35,32 +37,45 @@ class IconService {
   // 核心抓取逻辑：瀑布式请求
   Future<void> fetchAndCacheIcon(String id, String rawUrl) async {
     if (rawUrl.isEmpty) return;
+    if (_pendingFetches.contains(id)) return; // 拦截重复请求
     if (!await StorageService().isAccountExists(id)) return;
     final domain = _extractDomain(rawUrl);
     if (domain.isEmpty) return;
     final filePath = await getIconPath(id);
-    // 抓取 API 列表 (按优先级排序)
-    final List<String> apiPool = [
-      "https://api.iowen.cn/libs/favicon/$domain.png", // Iowen CDN
-      "https://favicon.im/$domain", // Favicon.im(备份)
-      "https://www.google.com/s2/favicons?sz=64&domain=$domain", // Google(备用)
-    ];
-    for (String apiUrl in apiPool) {
-      try {
-        if (!await StorageService().isAccountExists(id)) return;
-        final response = await http
-            .get(Uri.parse(apiUrl))
-            .timeout(const Duration(seconds: 5));
-        if (!await StorageService().isAccountExists(id)) return;
-        if (response.statusCode == 200 && response.bodyBytes.length > 100) {
-          // 简单过滤太小的无效图
-          await File(filePath).writeAsBytes(response.bodyBytes);
-          debugPrint("IconService: 成功从 $apiUrl 抓取图标 ($id)");
-          return; // 任何一个成功即退出循环
+    _pendingFetches.add(id); // 将当前ID加入正在请求队列
+
+    try {
+      // 抓取 API 列表 (按优先级排序)
+      final List<String> apiPool = [
+        "https://api.iowen.cn/libs/favicon/$domain.png", // Iowen CDN
+        "https://favicon.im/$domain", // Favicon.im(备份)
+        "https://www.google.com/s2/favicons?sz=64&domain=$domain", // Google(备用)
+      ];
+      for (String apiUrl in apiPool) {
+        try {
+          if (!await StorageService().isAccountExists(id)) return;
+          final response = await http
+              .get(
+                Uri.parse(apiUrl),
+                headers: {
+                  'User-Agent':
+                      'Mozilla/5.0 (Windows NT 10.0; Win64; x64)   AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                },
+              )
+              .timeout(const Duration(seconds: 5));
+          if (!await StorageService().isAccountExists(id)) return;
+          if (response.statusCode == 200 && response.bodyBytes.length > 100) {
+            // 简单过滤太小的无效图
+            await File(filePath).writeAsBytes(response.bodyBytes);
+            debugPrint("IconService: 成功从 $apiUrl 抓取图标 ($id)");
+            return; // 任何一个成功即退出循环
+          }
+        } catch (e) {
+          debugPrint("IconService: 从 $apiUrl 抓取失败: $e");
         }
-      } catch (e) {
-        debugPrint("IconService: 从 $apiUrl 抓取失败: $e");
       }
+    } finally {
+      _pendingFetches.remove(id); // 移除锁
     }
   }
 
