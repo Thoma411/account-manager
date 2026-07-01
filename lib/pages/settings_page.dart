@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 00:17:53
- * @LastEditTime: 2026-07-01 16:49:03
+ * @LastEditTime: 2026-07-01 21:43:09
  * @Description: 设置页
  */
 
@@ -706,7 +706,7 @@ class SettingsPageState extends State<SettingsPage> {
         const SizedBox(height: 10),
         const ListTile(
           title: Text("关于项目"),
-          subtitle: Text("accountManager v1.0.0-Beta"),
+          subtitle: Text("accountManager 0.9.0-beta.1"),
           leading: Icon(Icons.info_outline),
         ),
 
