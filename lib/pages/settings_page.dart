@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 00:17:53
- * @LastEditTime: 2026-07-01 21:43:09
+ * @LastEditTime: 2026-07-01 22:33:53
  * @Description: 设置页
  */
 
@@ -9,6 +9,8 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/auth_service.dart';
 import '../services/settings_service.dart';
@@ -37,6 +39,8 @@ class SettingsPageState extends State<SettingsPage> {
   bool _hasDb = false; // 控制WebDAV按钮
   bool _autoFetchIcons = false; // 自动抓取图标
   bool _autoSyncEnabled = false; // 静默同步
+
+  static const String currentVersion = "v0.9.0-beta.1";
 
   @override
   void initState() {
@@ -519,6 +523,118 @@ class SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  // 异步检查更新
+  Future<void> _checkForUpdates() async {
+    // 1. 弹出轻量提示正在检查
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("正在检查更新...", textAlign: TextAlign.center),
+        duration: Duration(seconds: 1),
+        width: 150,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    try {
+      final url = Uri.parse(
+        "https://api.github.com/repos/Thoma411/account-manager/releases",
+      );
+      final response = await http.get(url).timeout(const Duration(seconds: 8));
+      if (response.statusCode == 200) {
+        final List<dynamic> releases = jsonDecode(response.body);
+        if (releases.isEmpty) {
+          _showUpdateResultDialog("已是最新版本", "云端暂无任何版本记录。");
+          return;
+        }
+        // 获取云端最新的发布版
+        final latestRelease = releases.first;
+        final String remoteVersion = latestRelease['tag_name'] ?? "";
+        final String downloadUrl = latestRelease['html_url'] ?? "";
+        final String releaseNotes = latestRelease['body'] ?? "暂无更新说明。";
+
+        if (remoteVersion != currentVersion && remoteVersion.isNotEmpty) {
+          _showNewVersionDialog(remoteVersion, releaseNotes, downloadUrl);
+        } else {
+          _showUpdateResultDialog("已是最新版本", "当前版本 $currentVersion 已是最新。");
+        }
+      } else {
+        throw Exception("HTTP 状态码 ${response.statusCode}");
+      }
+    } catch (e) {
+      _showUpdateResultDialog(
+        "检查失败",
+        "无法连接到 GitHub 检查更新: ${e.toString().replaceAll('Exception: ', '')}",
+      );
+    }
+  }
+
+  // 弹出普通状态更新提示框
+  void _showUpdateResultDialog(String title, String content) {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("确认"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 弹出新版本升级引导框
+  void _showNewVersionDialog(String version, String notes, String downloadUrl) {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              Icons.system_update_alt_rounded,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            const SizedBox(width: 8),
+            Text("发现新版本 $version"),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "更新日志：",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              const SizedBox(height: 8),
+              Text(notes, style: const TextStyle(fontSize: 12, height: 1.4)),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("暂不更新"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await launchUrl(
+                Uri.parse(downloadUrl),
+                mode: LaunchMode.externalApplication,
+              );
+            },
+            child: const Text("下载"),
+          ),
+        ],
+      ),
+    );
+  }
+
   // 登出保险箱
   void _handleLogout() async {
     showDialog(
@@ -704,9 +820,15 @@ class SettingsPageState extends State<SettingsPage> {
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 10),
+        ListTile(
+          title: const Text("检查更新"),
+          leading: const Icon(Icons.update_rounded),
+          onTap: _checkForUpdates,
+        ),
+        const Divider(),
         const ListTile(
           title: Text("关于项目"),
-          subtitle: Text("accountManager 0.9.0-beta.1"),
+          subtitle: Text("accountManager $currentVersion"),
           leading: Icon(Icons.info_outline),
         ),
 
