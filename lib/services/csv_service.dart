@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:42:38
- * @LastEditTime: 2026-07-01 16:35:33
+ * @LastEditTime: 2026-07-01 17:28:00
  * @Description: CSV处理
  */
 
@@ -43,6 +43,11 @@ class CsvService {
       // 4. 遍历并存入数据库(假设第一行是表头 从第2行开始)
       for (int i = 1; i < rows.length; i++) {
         try {
+          final currentCount = await _storageService.getAccountCount();
+          if (currentCount >= 4096) {
+            debugPrint("已达数据库设定上限(4096)，导入中止");
+            break;
+          }
           final row = rows[i];
           if (row.length < 13) continue; // 检查列数是否足够(>=13列)
           // 查重

@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-06-20 21:54:01
+ * @LastEditTime: 2026-07-01 17:21:59
  * @Description: 与SQLite交互的方法
  */
 
@@ -144,6 +144,16 @@ class StorageService {
     );
     await IconService().deleteIcon(id); // 删除对应图标(若有)
     await _incrementRevision();
+  }
+
+  // 获取账户数量
+  Future<int> getAccountCount() async {
+    final db = await database;
+    final res = await db.rawQuery('SELECT COUNT(*) FROM accounts');
+    if (res.isNotEmpty && res.first.values.isNotEmpty) {
+      return res.first.values.first as int? ?? 0;
+    }
+    return 0;
   }
 
   // 获取所有数据

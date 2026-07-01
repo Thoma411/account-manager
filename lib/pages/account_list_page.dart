@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-07-01 15:32:12
+ * @LastEditTime: 2026-07-01 17:28:06
  * @Description: 账户信息页(查看页)
  */
 
@@ -234,6 +234,10 @@ class AccountListPageState extends State<AccountListPage> {
 
   // 弹出新增账户对话框
   void showAddAccountDialog() async {
+    if (_allAccounts.length >= 4096) {
+      _showGuardDialog("这么能存？", "账户数量已达上限。");
+      return;
+    }
     bool hasDb = await StorageService().isDatabaseExists(); // 检测数据库是否存在
     if (!mounted) return;
     if (!hasDb) {
