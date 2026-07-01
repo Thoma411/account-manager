@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:42:38
- * @LastEditTime: 2026-07-01 17:28:00
+ * @LastEditTime: 2026-07-01 17:46:41
  * @Description: CSV处理
  */
 
@@ -49,7 +49,10 @@ class CsvService {
             break;
           }
           final row = rows[i];
-          if (row.length < 13) continue; // 检查列数是否足够(>=13列)
+          if (row.isEmpty) continue; // 过滤空行
+          while (row.length < 13) {
+            row.add(""); // 动态补全13行
+          }
           // 查重
           String platformName = row[0]?.toString().trim() ?? "";
           if (platformName.isEmpty) continue;
