@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 23:04:48
- * @LastEditTime: 2026-07-01 00:14:34
+ * @LastEditTime: 2026-07-01 14:57:23
  * @Description: 账户信息详情页
  */
 
@@ -353,7 +353,12 @@ class _AccountDetailViewState extends State<AccountDetailView> {
               child: TextFormField(
                 controller: controller,
                 maxLines: 1, // 备注字段如果需要多行，单独处理
-                inputFormatters: inputFormatters,
+                inputFormatters: isDateField
+                    ? [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9\-./]')),
+                        LengthLimitingTextInputFormatter(10),
+                      ]
+                    : inputFormatters,
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
