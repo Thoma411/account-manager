@@ -1,13 +1,14 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-07-01 00:13:25
+ * @LastEditTime: 2026-07-01 15:50:49
  * @Description: 主框架
  */
 
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../services/storage_service.dart';
@@ -30,6 +31,7 @@ class ShellPage extends StatefulWidget {
 
 class _ShellPageState extends State<ShellPage> with WindowListener {
   int _selectedIndex = 0;
+  DateTime? _lastPressedAt; // 移动端上一次按返回的时刻
 
   final GlobalKey<AccountListPageState> _accountListPageKey =
       GlobalKey<AccountListPageState>();
@@ -97,7 +99,7 @@ class _ShellPageState extends State<ShellPage> with WindowListener {
     // 动态感知屏幕宽度
     final bool isMobile = AccountUiUtils.isMobile(context);
 
-    return Scaffold(
+    Widget shellScaffold = Scaffold(
       // 手机模式: 启用标准底栏; 桌面模式: 设为null
       bottomNavigationBar: isMobile
           ? NavigationBar(
@@ -213,6 +215,32 @@ class _ShellPageState extends State<ShellPage> with WindowListener {
           ],
         ),
       ),
+    );
+
+    return PopScope(
+      // 手机模式拦截原生返回键
+      canPop: !(Platform.isAndroid || Platform.isIOS),
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return; // 已被拦截处理过直接返回
+
+        final now = DateTime.now();
+        if (_lastPressedAt == null ||
+            now.difference(_lastPressedAt!) > const Duration(seconds: 2)) {
+          _lastPressedAt = now;
+          if (!mounted) return;
+          // 弹出悬浮提示
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("再按一次退出应用", textAlign: TextAlign.center),
+              duration: Duration(seconds: 2),
+              width: 150,
+            ),
+          );
+          return;
+        }
+        await SystemNavigator.pop();
+      },
+      child: shellScaffold,
     );
   }
 
