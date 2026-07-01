@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-07-01 00:14:19
+ * @LastEditTime: 2026-07-01 15:32:12
  * @Description: 账户信息页(查看页)
  */
 
@@ -901,10 +901,12 @@ class AccountListPageState extends State<AccountListPage> {
       child: TextField(
         controller: _searchController, // 绑定控制器
         focusNode: _searchFocusNode, // 绑定焦点
+        textAlignVertical: TextAlignVertical.center,
         onChanged: (value) => _filterAccounts(value), // 输入变化时即时过滤
         onSubmitted: (value) => _pageFocusNode.requestFocus(), // 将焦点归还页面
         decoration: InputDecoration(
-          hintText: "搜索账户 (Ctrl+F)",
+          hintText: "搜索账户",
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
           prefixIcon: const Icon(Icons.search),
           // 增加清除按钮
           suffixIcon: _searchController.text.isNotEmpty
