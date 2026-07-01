@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-22 19:47:45
- * @LastEditTime: 2026-06-22 22:27:40
+ * @LastEditTime: 2026-07-01 15:14:36
  * @Description: 初始登入界面
  */
 
@@ -26,6 +26,7 @@ class UnlockPage extends StatefulWidget {
 
 class _UnlockPageState extends State<UnlockPage> {
   final TextEditingController _passwordController = TextEditingController();
+  bool _obscurePassword = true; // 控制密码可见性
 
   void _unlock() async {
     // 调用验证逻辑
@@ -260,10 +261,23 @@ class _UnlockPageState extends State<UnlockPage> {
                 const SizedBox(height: 32),
                 TextField(
                   controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
                     labelText: "主密码",
-                    prefixIcon: Icon(Icons.password),
+                    prefixIcon: const Icon(Icons.password),
+                    suffixIcon: Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                        ),
+                        onPressed: () {
+                          setState(() => _obscurePassword = !_obscurePassword);
+                        },
+                      ),
+                    ),
                   ),
                   onSubmitted: (_) => _unlock(),
                 ),
@@ -275,6 +289,7 @@ class _UnlockPageState extends State<UnlockPage> {
                   ),
                   child: const Text("解锁"),
                 ),
+                const SizedBox(height: 5),
                 TextButton(
                   onPressed: _showForgotPasswordDialog,
                   child: Text(
