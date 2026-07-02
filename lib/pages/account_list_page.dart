@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-07-01 17:28:06
+ * @LastEditTime: 2026-07-02 13:44:45
  * @Description: 账户信息页(查看页)
  */
 
@@ -1189,11 +1189,14 @@ class AccountListPageState extends State<AccountListPage> {
                       // 未选中任何行则面板内容显示为空，防止报错
                       child: (_isPanelOpen && _selectedAccountId != null)
                           ? (() {
+                              if (_allAccounts.isEmpty) {
+                                return const SizedBox.shrink();
+                              } // 全列表为空，安全返回空
                               // 在当前显示的列表中找相应ID匹配的账户对象
-                              final account = _displayAccounts.firstWhere(
+                              final account = _allAccounts.firstWhere(
                                 (acc) => acc.id == _selectedAccountId,
                                 orElse: () =>
-                                    _displayAccounts.first, // 万一没找到则回退到第一条
+                                    _allAccounts.first, // 没找到则回退到全库第一条
                               );
                               return AccountDetailView(
                                 account: account,
