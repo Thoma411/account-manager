@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 00:17:53
- * @LastEditTime: 2026-07-01 22:33:53
+ * @LastEditTime: 2026-07-02 17:53:09
  * @Description: 设置页
  */
 
@@ -40,7 +40,7 @@ class SettingsPageState extends State<SettingsPage> {
   bool _autoFetchIcons = false; // 自动抓取图标
   bool _autoSyncEnabled = false; // 静默同步
 
-  static const String currentVersion = "v0.9.0-beta.1";
+  static const String currentVersion = "v0.9.0-beta.2";
 
   @override
   void initState() {

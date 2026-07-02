@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 23:04:48
- * @LastEditTime: 2026-07-01 14:57:23
+ * @LastEditTime: 2026-07-02 17:50:53
  * @Description: 账户信息详情页
  */
 
@@ -641,7 +641,7 @@ class _AccountDetailViewState extends State<AccountDetailView> {
   }
 
   // 添加新标签并查重
-  void _addNewTag(String val, {int maxChars = 6}) {
+  void _addNewTag(String val, {int maxChars = 8}) {
     final cleanTag = val.trim();
     if (cleanTag.length > maxChars) {
       MessageUtil.show(context, "标签长度不能超过 $maxChars 个字");

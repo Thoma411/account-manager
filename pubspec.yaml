@@ -1,7 +1,7 @@
 name: accountmanager
 description: "A new Flutter project about accountmanager."
 publish_to: 'none'
-version: 0.9.0-beta.1+1
+version: 0.9.0-beta.2+2
 
 environment:
   sdk: ^3.10.8
