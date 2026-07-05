@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 00:17:53
- * @LastEditTime: 2026-07-02 17:53:09
+ * @LastEditTime: 2026-07-05 22:25:14
  * @Description: 设置页
  */
 
@@ -654,6 +654,9 @@ class SettingsPageState extends State<SettingsPage> {
                   context,
                 ).showSnackBar(const SnackBar(content: Text("正在同步...")));
                 await WebDavService().uploadIfSafe();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).clearSnackBars();
+                }
               }
               WebDavService().reset();
               SecurityService().clearKeys(); // 清空内存中的DK

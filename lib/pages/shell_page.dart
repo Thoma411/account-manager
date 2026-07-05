@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-07-01 15:50:49
+ * @LastEditTime: 2026-07-05 22:07:10
  * @Description: 主框架
  */
 
@@ -64,7 +64,10 @@ class _ShellPageState extends State<ShellPage> with WindowListener {
 
   @override
   void dispose() {
-    if (Platform.isWindows) windowManager.removeListener(this); // 销毁监听
+    if (Platform.isWindows) {
+      windowManager.removeListener(this); // 销毁监听
+      windowManager.setPreventClose(false); // 归还窗口关闭控制权
+    }
     super.dispose();
   }
 
