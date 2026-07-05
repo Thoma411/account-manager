@@ -80,3 +80,32 @@ jobs:
           files: build/windows/x64/runner/vault_keeper_windows.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build macOS App
+        run: flutter build macos --release
+
+      - name: Archive macOS Release
+        run: |
+          cd build/macos/Build/Products/Release
+          zip -r ../../../../vault_keeper_macos.zip accountmanager.app
+
+      - name: Upload macOS ZIP to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/macos/Build/Products/Release/vault_keeper_macos.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
