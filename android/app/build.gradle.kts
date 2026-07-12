@@ -13,9 +13,13 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file("upload-keystore.jks")
-            storePassword = System.getenv("SIGNING_STORE_PASSWORD")
-            keyAlias = System.getenv("SIGNING_KEY_ALIAS")
-            keyPassword = System.getenv("SIGNING_KEY_PASSWORD")
+            val envStorePassword = System.getenv("SIGNING_STORE_PASSWORD")
+            val envKeyAlias = System.getenv("SIGNING_KEY_ALIAS")
+            val envKeyPassword = System.getenv("SIGNING_KEY_PASSWORD")
+
+            storePassword = if (!envStorePassword.isNullOrEmpty()) envStorePassword else "123456"
+            keyAlias = if (!envKeyAlias.isNullOrEmpty()) envKeyAlias else "key"
+            keyPassword = if (!envKeyPassword.isNullOrEmpty()) envKeyPassword else "123456"
         }
     }
 
