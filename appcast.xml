@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>Vault Keeper Appcast</title>
+    <item>
+      <title>Version 0.9.0-beta.3</title>
+      <pubDate>Sun, 12 Jul 2026 15:33:54 +0000</pubDate>
+      <enclosure url="https://github.com/Thoma411/account-manager/releases/download/v0.9.0-beta.3/vault_keeper_windows.zip"
+                 sparkle:version="0.9.0-beta.3"
+                 sparkle:os="windows"
+                 length="16420949"
+                 type="application/octet-stream" />
+    </item>
+    <item>
+      <title>Version 0.9.0-beta.3</title>
+      <pubDate>Sun, 12 Jul 2026 15:33:54 +0000</pubDate>
+      <enclosure url="https://github.com/Thoma411/account-manager/releases/download/v0.9.0-beta.3/vault_keeper_macos.zip"
+                 sparkle:version="0.9.0-beta.3"
+                 sparkle:os="macos"
+                 length="68538739"
+                 type="application/octet-stream" />
+    </item>
+  </channel>
+</rss>
