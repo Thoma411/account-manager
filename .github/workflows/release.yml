@@ -109,3 +109,62 @@ jobs:
           files: build/macos/Build/Products/Release/vault_keeper_macos.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-appcast:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Generate appcast.xml
+        run: |
+          TAG_NAME="${{ github.ref_name }}"
+          VERSION="${TAG_NAME#v}"
+          PUB_DATE=$(date -R)
+          USERNAME="${{ github.repository_owner }}"
+          REPO="${{ github.event.repository.name }}"
+
+          WINDOWS_SIZE=$(curl -sI -L "https://github.com/${USERNAME}/${REPO}/releases/download/${TAG_NAME}/vault_keeper_windows.zip" | grep -i 'content-length' | tail -n 1 | awk '{print $2}' | tr -d '\r')
+          MACOS_SIZE=$(curl -sI -L "https://github.com/${USERNAME}/${REPO}/releases/download/${TAG_NAME}/vault_keeper_macos.zip" | grep -i 'content-length' | tail -n 1 | awk '{print $2}' | tr -d '\r')
+          WINDOWS_SIZE=${WINDOWS_SIZE:-0}
+          MACOS_SIZE=${MACOS_SIZE:-0}
+
+          cat <<EOF > appcast.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+            <channel>
+              <title>Vault Keeper Appcast</title>
+              <item>
+                <title>Version ${VERSION}</title>
+                <pubDate>${PUB_DATE}</pubDate>
+                <enclosure url="https://github.com/${USERNAME}/${REPO}/releases/download/${TAG_NAME}/vault_keeper_windows.zip"
+                           sparkle:version="${VERSION}"
+                           sparkle:os="windows"
+                           length="0"
+                           type="application/octet-stream" />
+              </item>
+              <item>
+                <title>Version ${VERSION}</title>
+                <pubDate>${PUB_DATE}</pubDate>
+                <enclosure url="https://github.com/${USERNAME}/${REPO}/releases/download/${TAG_NAME}/vault_keeper_macos.zip"
+                           sparkle:version="${VERSION}"
+                           sparkle:os="macos"
+                           length="0"
+                           type="application/octet-stream" />
+              </item>
+            </channel>
+          </rss>
+          EOF
+
+      - name: Commit and Push appcast.xml back to Repo
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add appcast.xml
+          git commit -m "chore: auto-update appcast.xml to ${{ github.ref_name }}" || echo "No changes to commit"
+          git push origin main

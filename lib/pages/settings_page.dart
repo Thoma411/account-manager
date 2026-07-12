@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 00:17:53
- * @LastEditTime: 2026-07-05 22:25:14
+ * @LastEditTime: 2026-07-12 21:48:59
  * @Description: 设置页
  */
 
@@ -9,6 +9,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:auto_updater/auto_updater.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
@@ -19,6 +20,7 @@ import '../services/security_service.dart';
 import '../services/icon_service.dart';
 import '../services/webdav_service.dart';
 import '../services/csv_service.dart';
+import '../widgets/account_ui_utils.dart';
 import '../utils/utils.dart';
 import 'login_page.dart';
 import '../main.dart';
@@ -40,7 +42,7 @@ class SettingsPageState extends State<SettingsPage> {
   bool _autoFetchIcons = false; // 自动抓取图标
   bool _autoSyncEnabled = false; // 静默同步
 
-  static const String currentVersion = "v0.9.0-beta.2";
+  static const String currentVersion = "v0.9.0-beta.3";
 
   @override
   void initState() {
@@ -525,6 +527,7 @@ class SettingsPageState extends State<SettingsPage> {
 
   // 异步检查更新
   Future<void> _checkForUpdates() async {
+    final bool isMobile = AccountUiUtils.isMobile(context);
     // 1. 弹出轻量提示正在检查
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -534,6 +537,11 @@ class SettingsPageState extends State<SettingsPage> {
         behavior: SnackBarBehavior.floating,
       ),
     );
+    // 电脑端交由autoUpdater更新
+    if (!isMobile) {
+      await autoUpdater.checkForUpdates();
+      return;
+    }
     try {
       final url = Uri.parse(
         "https://api.github.com/repos/Thoma411/account-manager/releases",
