@@ -160,10 +160,16 @@ jobs:
           </rss>
           EOF
 
-      - name: Commit and Push appcast.xml back to Repo
+      - name: Prepare appcast.xml for deployment
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add appcast.xml
-          git commit -m "chore: auto-update appcast.xml to ${{ github.ref_name }}" || echo "No changes to commit"
-          git push origin main
+          mkdir -p deploy_dist
+          mv appcast.xml deploy_dist/
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./deploy_dist
+          publish_branch: gh-pages
+          user_name: "github-actions[bot]"
+          user_email: "github-actions[bot]@users.noreply.github.com"
