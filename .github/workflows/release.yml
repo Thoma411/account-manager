@@ -46,6 +46,13 @@ jobs:
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
         run: flutter build apk --split-per-abi
 
+      - name: Rename APKs
+        run: |
+          cd build/app/outputs/flutter-apk/
+          mv app-arm64-v8a-release.apk vault_keeper-arm64-v8a-release.apk || true
+          mv app-armeabi-v7a-release.apk vault_keeper-armeabi-v7a-release.apk || true
+          mv app-x86_64-release.apk vault_keeper-x86_64-release.apk || true
+
       - name: Upload APKs to Release
         uses: softprops/action-gh-release@v2
         with:

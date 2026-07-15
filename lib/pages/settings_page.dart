@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 00:17:53
- * @LastEditTime: 2026-07-12 21:48:59
+ * @LastEditTime: 2026-07-15 21:16:20
  * @Description: 设置页
  */
 
@@ -606,7 +606,7 @@ class SettingsPageState extends State<SettingsPage> {
               color: Theme.of(context).colorScheme.primary,
             ),
             const SizedBox(width: 8),
-            Text("发现新版本 $version"),
+            Expanded(child: Text("发现新版本 $version")),
           ],
         ),
         content: SingleChildScrollView(
