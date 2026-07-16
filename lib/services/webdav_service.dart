@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-04-13 18:19:04
- * @LastEditTime: 2026-07-16 15:11:50
+ * @LastEditTime: 2026-07-16 17:25:37
  * @Description: webdav
  */
 
@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:webdav_client/webdav_client.dart' as dav;
+import 'package:device_info_plus/device_info_plus.dart';
 
 import 'settings_service.dart';
 import 'storage_service.dart';
@@ -246,10 +247,15 @@ class WebDavService {
         String? localRev = s.get('local_revision', defaultValue: '0');
         await s.set('last_synced_revision', localRev!);
         await s.set('last_synced_etag', etag);
+        await addSyncLog("静默同步-上传", "成功：本地库已同步");
         return true;
       }
       return false;
-    } catch (_) {
+    } catch (e) {
+      await addSyncLog(
+        "静默同步-上传",
+        "失败: ${e.toString().replaceAll('Exception: ', '')}",
+      );
       return false;
     }
   }
@@ -264,12 +270,57 @@ class WebDavService {
         await SettingsService().set('last_synced_etag', newEtag);
         // 仅从云端下载新库后才标记解锁后需要对齐版本
         await SettingsService().set('need_revision_alignment', 'true');
+        await addSyncLog("静默同步-下载", "成功：云端拉取完毕");
         return true;
       }
       return false;
-    } catch (_) {
+    } catch (e) {
+      await addSyncLog(
+        "静默同步-下载",
+        "失败: ${e.toString().replaceAll('Exception: ', '')}",
+      );
       return false;
     }
+  }
+
+  // 添加云同步日志
+  Future<void> addSyncLog(String action, String status) async {
+    final s = SettingsService();
+    List<Map<String, dynamic>> logs = [];
+    // 读取现有的历史日志
+    final logData = s.get('sync_history_json');
+    if (logData != null) {
+      try {
+        logs = List<Map<String, dynamic>>.from(jsonDecode(logData));
+      } catch (_) {}
+    }
+    // 获取设备特征码
+    String deviceName = Platform.localHostname;
+    final DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+    try {
+      if (Platform.isAndroid) {
+        final androidInfo = await deviceInfo.androidInfo;
+        deviceName = "${androidInfo.brand.toUpperCase()} ${androidInfo.model}";
+      } else if (Platform.isIOS) {
+        final iosInfo = await deviceInfo.iosInfo;
+        deviceName = iosInfo.name;
+      }
+    } catch (e) {
+      debugPrint("读取移动端设备型号失败: $e");
+      deviceName = Platform.localHostname; // 异常时安全保底
+    }
+    // 拼装特征码
+    final String deviceSignature =
+        "${Platform.operatingSystem.toUpperCase()} ($deviceName)";
+    // 注入设备特征码，写入新日志
+    logs.insert(0, {
+      'time': DateTime.now().toIso8601String(),
+      'action': "[$deviceSignature] $action",
+      'status': status,
+    });
+    // 仅保留最近15条并写回持久化配置
+    if (logs.length > 15) logs.removeLast();
+    await s.set('sync_history_json', jsonEncode(logs));
   }
 
   // 统一处理HTTP-PUT/GET逻辑

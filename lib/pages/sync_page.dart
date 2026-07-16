@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 00:24:18
- * @LastEditTime: 2026-07-16 15:41:54
+ * @LastEditTime: 2026-07-16 16:47:24
  * @Description: 云同步页
  */
 
@@ -60,16 +60,9 @@ class SyncPageState extends State<SyncPage> {
   }
 
   // 添加新日志
-  void _addLog(String action, String status) {
-    setState(() {
-      _logs.insert(0, {
-        'time': DateTime.now().toIso8601String(),
-        'action': action,
-        'status': status,
-      });
-      if (_logs.length > 15) _logs.removeLast(); // 保留最近15条
-    });
-    _settings.set('sync_history_json', jsonEncode(_logs));
+  void _addLog(String action, String status) async {
+    await _webdav.addSyncLog(action, status);
+    _loadSyncLogs(); // 重新从本地加载日志
   }
 
   // 清空日志列表
