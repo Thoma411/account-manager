@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 00:24:18
- * @LastEditTime: 2026-07-01 00:15:17
+ * @LastEditTime: 2026-07-16 15:41:54
  * @Description: 云同步页
  */
 
@@ -191,15 +191,16 @@ class SyncPageState extends State<SyncPage> {
             onPressed: () => Navigator.pop(context),
             child: const Text("取消"),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               onConfirmLocal();
             },
-            child: Text(
-              "保留本地 (上传)",
-              style: TextStyle(color: Theme.of(context).colorScheme.onError),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
             ),
+            child: const Text("保留本地 (上传)"),
           ),
           ElevatedButton(
             onPressed: () {
