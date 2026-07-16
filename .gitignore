@@ -43,6 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+android/.kotlin/
+android/build/
 
 # SQLite Database files (Local test data)
 *.db

@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-07-05 22:07:10
+ * @LastEditTime: 2026-07-15 23:35:56
  * @Description: 主框架
  */
 
@@ -241,6 +241,16 @@ class _ShellPageState extends State<ShellPage> with WindowListener {
           );
           return;
         }
+        final bool isAutoSync =
+            SettingsService().get('auto_sync_enabled') == 'true';
+        final dk = SecurityService().currentDataKey;
+        if (isAutoSync && dk != null) {
+          await StorageService().closeDatabase();
+          await WebDavService().uploadIfSafe();
+        } else {
+          await StorageService().closeDatabase();
+        }
+        SecurityService().clearKeys();
         await SystemNavigator.pop();
       },
       child: shellScaffold,

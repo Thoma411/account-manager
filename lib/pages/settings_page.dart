@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 00:17:53
- * @LastEditTime: 2026-07-15 21:16:20
+ * @LastEditTime: 2026-07-15 23:43:22
  * @Description: 设置页
  */
 
@@ -657,10 +657,15 @@ class SettingsPageState extends State<SettingsPage> {
           ),
           TextButton(
             onPressed: () async {
-              if (_settings.get('auto_sync_enabled') == 'true') {
+              final bool isAutoSync =
+                  _settings.get('auto_sync_enabled') == 'true';
+              if (isAutoSync) {
                 ScaffoldMessenger.of(
                   context,
                 ).showSnackBar(const SnackBar(content: Text("正在同步...")));
+              }
+              await StorageService().closeDatabase(); // 关闭db连接并重置句柄
+              if (isAutoSync) {
                 await WebDavService().uploadIfSafe();
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).clearSnackBars();
@@ -668,7 +673,6 @@ class SettingsPageState extends State<SettingsPage> {
               }
               WebDavService().reset();
               SecurityService().clearKeys(); // 清空内存中的DK
-              await StorageService().closeDatabase(); // 关闭db连接并重置句柄
               if (!context.mounted) return;
               Navigator.pop(context);
               Navigator.of(context).pushAndRemoveUntil(
