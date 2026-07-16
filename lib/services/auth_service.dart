@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-03-21 18:50:58
- * @LastEditTime: 2026-06-18 00:20:37
+ * @LastEditTime: 2026-07-16 15:13:50
  * @Description: 解锁与认证
  */
 
@@ -46,10 +46,14 @@ class AuthService {
         await SettingsService().loadDbSettings();
         // 确保本地设备状态与数据库版本对齐
         final s = SettingsService();
-        String? dbRev = s.get('local_revision');
-        if (dbRev != null) {
-          // 强制更新本地配置文件的快照
-          await s.set('last_synced_revision', dbRev);
+        // 仅从云端下载新库重载后才对齐本地锚点
+        if (s.get('need_revision_alignment') == 'true') {
+          String? dbRev = s.get('local_revision');
+          if (dbRev != null) {
+            // 强制更新本地配置文件的快照
+            await s.set('last_synced_revision', dbRev);
+          }
+          await s.set('need_revision_alignment', 'false');
         }
         return true;
       }

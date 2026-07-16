@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-04-13 18:19:04
- * @LastEditTime: 2026-06-22 21:06:31
+ * @LastEditTime: 2026-07-16 15:11:50
  * @Description: webdav
  */
 
@@ -262,6 +262,8 @@ class WebDavService {
         await StorageService().closeDatabase();
         String newEtag = await downloadVault();
         await SettingsService().set('last_synced_etag', newEtag);
+        // 仅从云端下载新库后才标记解锁后需要对齐版本
+        await SettingsService().set('need_revision_alignment', 'true');
         return true;
       }
       return false;

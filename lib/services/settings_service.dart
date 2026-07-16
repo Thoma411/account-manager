@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-04-08 17:43:09
- * @LastEditTime: 2026-06-30 23:49:18
+ * @LastEditTime: 2026-07-16 15:06:36
  * @Description: 设置
  */
 
@@ -27,6 +27,7 @@ class SettingsService {
     // 同步状态
     'last_synced_revision', // 上传下载时的本地逻辑版本快照
     'last_synced_etag', // 上传下载成功后保存的云端eTag
+    'need_revision_alignment', // 对齐哨兵，确定是否更新本地版本锚点
     'auto_fetch_icons', // 自动抓取图标
     'force_desktop_mode', // 桌面模式
   };

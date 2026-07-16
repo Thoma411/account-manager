@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-12 22:00:56
- * @LastEditTime: 2026-07-02 13:44:45
+ * @LastEditTime: 2026-07-16 16:14:19
  * @Description: 账户信息页(查看页)
  */
 
@@ -722,7 +722,11 @@ class AccountListPageState extends State<AccountListPage> {
                 // 检查文件是否存在
                 bool fileExists = files.any((f) => f.name == 'vault_keeper.db');
                 if (!fileExists) throw Exception("云端目录中未找到vault_keeper.db");
-                await webdav.downloadVault(); // 下载
+
+                String newEtag = await webdav.downloadVault(); // 下载并获取云端etag
+                await _settings.set('last_synced_etag', newEtag); // 立即保存etag
+                await _settings.set('need_revision_alignment', 'true'); // 设置哨兵
+
                 if (!context.mounted) return;
                 Navigator.pop(context); // 关闭配置弹窗
                 // 下载成功后，由于本地有了.db，自动引导至解锁流程
