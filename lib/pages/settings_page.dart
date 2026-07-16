@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 00:17:53
- * @LastEditTime: 2026-07-15 23:43:22
+ * @LastEditTime: 2026-07-16 20:40:31
  * @Description: 设置页
  */
 
@@ -527,8 +527,7 @@ class SettingsPageState extends State<SettingsPage> {
 
   // 异步检查更新
   Future<void> _checkForUpdates() async {
-    final bool isMobile = AccountUiUtils.isMobile(context);
-    // 1. 弹出轻量提示正在检查
+    // 弹出轻量提示正在检查
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text("正在检查更新...", textAlign: TextAlign.center),
@@ -537,11 +536,6 @@ class SettingsPageState extends State<SettingsPage> {
         behavior: SnackBarBehavior.floating,
       ),
     );
-    // 电脑端交由autoUpdater更新
-    if (!isMobile) {
-      await autoUpdater.checkForUpdates();
-      return;
-    }
     try {
       final url = Uri.parse(
         "https://api.github.com/repos/Thoma411/account-manager/releases",
@@ -596,6 +590,8 @@ class SettingsPageState extends State<SettingsPage> {
   // 弹出新版本升级引导框
   void _showNewVersionDialog(String version, String notes, String downloadUrl) {
     if (!mounted) return;
+    final bool isMobile = AccountUiUtils.isMobile(context);
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -631,10 +627,14 @@ class SettingsPageState extends State<SettingsPage> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
-              await launchUrl(
-                Uri.parse(downloadUrl),
-                mode: LaunchMode.externalApplication,
-              );
+              if (isMobile) {
+                await launchUrl(
+                  Uri.parse(downloadUrl),
+                  mode: LaunchMode.externalApplication,
+                );
+              } else {
+                await autoUpdater.checkForUpdates(inBackground: false);
+              }
             },
             child: const Text("下载"),
           ),
