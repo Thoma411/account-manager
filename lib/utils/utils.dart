@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-22 14:30:59
- * @LastEditTime: 2026-04-13 18:31:42
+ * @LastEditTime: 2026-07-16 14:56:53
  * @Description: 工具类
  */
 
@@ -13,8 +13,7 @@ class DateUtil {
   static String format(String? isoString) {
     if (isoString == null || isoString.isEmpty) return "无记录";
     try {
-      DateTime dt = DateTime.parse(isoString);
-      // 使用 DateFormat，一行解决所有拼接问题
+      DateTime dt = DateTime.parse(isoString).toLocal();
       return DateFormat('yyyy-MM-dd HH:mm:ss').format(dt);
     } catch (e) {
       return isoString;
