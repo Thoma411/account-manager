@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 00:17:53
- * @LastEditTime: 2026-07-16 21:11:13
+ * @LastEditTime: 2026-07-29 23:34:18
  * @Description: 设置页
  */
 
@@ -633,6 +633,9 @@ class SettingsPageState extends State<SettingsPage> {
                   mode: LaunchMode.externalApplication,
                 );
               } else {
+                await autoUpdater.setFeedURL(
+                  'https://thoma411.github.io/account-manager/appcast.xml',
+                );
                 await autoUpdater.checkForUpdates(inBackground: false);
               }
             },

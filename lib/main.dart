@@ -1,14 +1,13 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-09 23:51:46
- * @LastEditTime: 2026-07-12 21:33:57
+ * @LastEditTime: 2026-07-29 23:32:28
  * @Description: main
  */
 
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:auto_updater/auto_updater.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -51,9 +50,6 @@ void main() async {
       await windowManager.show();
       await windowManager.focus();
     });
-    await autoUpdater.setFeedURL(
-      'https://thoma411.github.io/account-manager/appcast.xml',
-    );
   }
   await SettingsService().init(); // 加载本地配置
 

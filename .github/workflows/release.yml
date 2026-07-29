@@ -131,10 +131,13 @@ jobs:
       - name: Generate appcast.xml
         run: |
           TAG_NAME="${{ github.ref_name }}"
-          VERSION="${TAG_NAME#v}"
           PUB_DATE=$(date -R)
           USERNAME="${{ github.repository_owner }}"
           REPO="${{ github.event.repository.name }}"
+
+          VERSION_FULL=$(grep 'version: ' pubspec.yaml | sed 's/version: //')
+          VERSION_NAME=$(echo "$VERSION_FULL" | cut -d'+' -f1)
+          BUILD_NUMBER=$(echo "$VERSION_FULL" | cut -d'+' -f2)
 
           WINDOWS_SIZE=$(curl -sI -L "https://github.com/${USERNAME}/${REPO}/releases/download/${TAG_NAME}/vault_keeper_windows.zip" | grep -i 'content-length' | tail -n 1 | awk '{print $2}' | tr -d '\r')
           MACOS_SIZE=$(curl -sI -L "https://github.com/${USERNAME}/${REPO}/releases/download/${TAG_NAME}/vault_keeper_macos.zip" | grep -i 'content-length' | tail -n 1 | awk '{print $2}' | tr -d '\r')
@@ -147,19 +150,21 @@ jobs:
             <channel>
               <title>Vault Keeper Appcast</title>
               <item>
-                <title>Version ${VERSION}</title>
+                <title>Version ${VERSION_NAME}</title>
                 <pubDate>${PUB_DATE}</pubDate>
                 <enclosure url="https://github.com/${USERNAME}/${REPO}/releases/download/${TAG_NAME}/vault_keeper_windows.zip"
-                           sparkle:version="${VERSION}"
+                           sparkle:version="${BUILD_NUMBER}"
+                           sparkle:shortVersionString="${VERSION_NAME}"
                            sparkle:os="windows"
                            length="${WINDOWS_SIZE}"
                            type="application/octet-stream" />
               </item>
               <item>
-                <title>Version ${VERSION}</title>
+                <title>Version ${VERSION_NAME}</title>
                 <pubDate>${PUB_DATE}</pubDate>
                 <enclosure url="https://github.com/${USERNAME}/${REPO}/releases/download/${TAG_NAME}/vault_keeper_macos.zip"
-                           sparkle:version="${VERSION}"
+                           sparkle:version="${BUILD_NUMBER}"
+                           sparkle:shortVersionString="${VERSION_NAME}"
                            sparkle:os="macos"
                            length="${MACOS_SIZE}"
                            type="application/octet-stream" />
