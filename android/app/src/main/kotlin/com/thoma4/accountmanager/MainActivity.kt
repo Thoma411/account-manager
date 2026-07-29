@@ -1,4 +1,4 @@
-package com.example.accountmanager
+package com.thoma4.accountmanager
 
 import android.content.pm.ActivityInfo
 import android.os.Bundle
