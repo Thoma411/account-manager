@@ -1,10 +1,43 @@
 <!--
  * @Author: Thoma4
  * @Date: 2026-02-09 23:51:46
- * @LastEditTime: 2026-07-01 22:37:11
+ * @LastEditTime: 2026-07-30 01:21:40
  * @Description: README
 -->
 
 # accountmanager
 
-A multi-platform, Flutter-based account manager that supports zero-knowledge envelope encryption, local SQLite storage, adaptive layouts, WebDAV cloud synchronization, and CSV data migration.
+一个管理账号密码的小玩意儿，基于Flutter构建，支持零知识信封加密、本地SQLite存储、自适应布局、WebDAV云同步以及CSV数据迁移，现已适配Windows、macOS以及Android。
+
+## 使用说明
+
+### 云同步
+
+应用目前仅适配了坚果云。使用此功能需要坚果云账号，以及任意设备上的坚果云客户端，按如下步骤启用：
+
+1. 在坚果云客户端上，设置-特色功能->第三方应用管理->添加应用密码，输入名称(任意)，生成密码；
+2. 在本应用中，设置->云端WebDAV配置；
+3. 依次填写服务器地址（见坚果云客户端）、账号（同上）、密码（第1步生成的密码）并保存配置；
+4. 前往云同步界面，即可向坚果云上传数据备份。
+
+### 导入导出
+
+使用Excel维护的密码本以`csv_utf-8`格式导出后，可以从应用的"设置->导入"选择对应的csv批量导入已有账户。导入导出的列数列名遵循下表，请确保顺序一一对应：
+
+| 列号 | 字段含义 | 字段名（英文） |
+|------|----------|----------------|
+| c1   | 平台名   | platform       |
+| c2   | 用户昵称 | name           |
+| c3   | 用户ID   | user_id        |
+| c4   | 邮箱     | email          |
+| c5   | 密码     | pswd           |
+| c6   | 网址     | url            |
+| c7   | 手机号   | phone          |
+| c8   | 生日     | birth          |
+| c9   | 备注     | notes          |
+| c10  | 注册日期 | signup_date    |
+| c11  | 实名标记 | real_name      |
+| c12  | 标签     | tags           |
+| c13  | 状态     | status         |
+
+注意，重复的平台名称会被自动跳过。
