@@ -51,7 +51,7 @@ jobs:
           cd build/app/outputs/flutter-apk/
           mv app-release.apk vault_keeper-arm64-v8a-release.apk || true
 
-      - name: Upload APKs to Release
+      - name: Upload APK to Release
         uses: softprops/action-gh-release@v2
         with:
           files: build/app/outputs/flutter-apk/vault_keeper-arm64-v8a-release.apk
