@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 00:17:53
- * @LastEditTime: 2026-07-29 23:44:03
+ * @LastEditTime: 2026-08-05 00:24:04
  * @Description: 设置页
  */
 
@@ -9,7 +9,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:auto_updater/auto_updater.dart';
+import 'package:ota_update/ota_update.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
@@ -552,9 +552,25 @@ class SettingsPageState extends State<SettingsPage> {
         final String remoteVersion = latestRelease['tag_name'] ?? "";
         final String downloadUrl = latestRelease['html_url'] ?? "";
         final String releaseNotes = latestRelease['body'] ?? "暂无更新说明。";
+        // 提取apk链接
+        String apkDownloadUrl = "";
+        final List<dynamic>? assets = latestRelease['assets'];
+        if (assets != null) {
+          try {
+            final apkAsset = assets.firstWhere(
+              (asset) => asset['name'] == 'vault_keeper-arm64-v8a-release.apk',
+            );
+            apkDownloadUrl = apkAsset['browser_download_url'] ?? ""; // 提取直链
+          } catch (_) {} // 查找失败按空值处理
+        }
 
         if (remoteVersion != currentVersion && remoteVersion.isNotEmpty) {
-          _showNewVersionDialog(remoteVersion, releaseNotes, downloadUrl);
+          _showNewVersionDialog(
+            remoteVersion,
+            releaseNotes,
+            downloadUrl,
+            apkDownloadUrl,
+          );
         } else {
           _showUpdateResultDialog("已是最新版本", "当前版本 $currentVersion 已是最新。");
         }
@@ -588,60 +604,151 @@ class SettingsPageState extends State<SettingsPage> {
   }
 
   // 弹出新版本升级引导框
-  void _showNewVersionDialog(String version, String notes, String downloadUrl) {
+  void _showNewVersionDialog(
+    String version,
+    String notes,
+    String downloadUrl,
+    String apkDownloadUrl,
+  ) {
     if (!mounted) return;
     final bool isMobile = AccountUiUtils.isMobile(context);
 
+    // 声明用于手机端下载状态控制的局部变量
+    bool isDownloading = false;
+    int downloadProgress = 0;
+    String statusText = "正在下载更新...";
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(
-              Icons.system_update_alt_rounded,
-              color: Theme.of(context).colorScheme.primary,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: Row(
+              children: [
+                Icon(
+                  Icons.system_update_alt_rounded,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                // 根据状态动态切换标题
+                Expanded(
+                  child: Text(isDownloading ? "正在升级中..." : "发现新版本 $version"),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            Expanded(child: Text("发现新版本 $version")),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "更新日志：",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            content: SizedBox(
+              width: 320,
+              child: SingleChildScrollView(
+                child: isDownloading
+                    ? Column(
+                        // 下载状态下显示进度条与百分比数值
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(height: 16),
+                          LinearProgressIndicator(
+                            value: downloadProgress / 100,
+                          ), // 进度条
+                          const SizedBox(height: 16),
+                          Text(
+                            "$statusText ($downloadProgress%)",
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Column(
+                        // 未下载状态下正常平铺更新日志
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "更新日志：",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            notes,
+                            style: const TextStyle(fontSize: 12, height: 1.4),
+                          ),
+                        ],
+                      ),
               ),
-              const SizedBox(height: 8),
-              Text(notes, style: const TextStyle(fontSize: 12, height: 1.4)),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("暂不更新"),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              if (isMobile) {
-                await launchUrl(
-                  Uri.parse(downloadUrl),
-                  mode: LaunchMode.externalApplication,
-                );
-              } else {
-                await autoUpdater.setFeedURL(
-                  'https://thoma411.github.io/account-manager/appcast.xml',
-                );
-                await autoUpdater.checkForUpdates(inBackground: false);
-              }
-            },
-            child: const Text("下载"),
-          ),
-        ],
+            ),
+            actions: isDownloading
+                ? null // 下载时强行屏蔽按钮
+                : [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("暂不更新"),
+                    ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        if (isMobile) {
+                          if (apkDownloadUrl.isEmpty) {
+                            // 没拿到直链则跳转至浏览器下载
+                            await launchUrl(
+                              Uri.parse(downloadUrl),
+                              mode: LaunchMode.externalApplication,
+                            );
+                            if (context.mounted) Navigator.pop(context);
+                            return;
+                          }
+                          setDialogState(() => isDownloading = true);
+                          try {
+                            // 唤起Android原生管道下载并自动拉起安装
+                            OtaUpdate()
+                                .execute(
+                                  apkDownloadUrl, // 直链
+                                  destinationFilename: 'vault_keeper.apk',
+                                )
+                                .listen(
+                                  (OtaEvent event) {
+                                    setDialogState(() {
+                                      if (event.status ==
+                                          OtaStatus.DOWNLOADING) {
+                                        downloadProgress =
+                                            int.tryParse(event.value ?? '0') ??
+                                            0;
+                                        statusText = "正在下载更新...";
+                                      } else if (event.status ==
+                                          OtaStatus.INSTALLING) {
+                                        statusText = "下载成功，正在拉起安装...";
+                                      } else if (event.status ==
+                                          OtaStatus.ALREADY_RUNNING_ERROR) {
+                                        statusText = "文件已在下载任务中...";
+                                      }
+                                    });
+                                  },
+                                  onError: (e) {
+                                    setDialogState(() => isDownloading = false);
+                                    if (context.mounted) {
+                                      MessageUtil.show(context, "自动更新失败: $e");
+                                    }
+                                  },
+                                );
+                          } catch (e) {
+                            setDialogState(() => isDownloading = false);
+                            MessageUtil.show(context, "升级异常: $e");
+                          }
+                        } else {
+                          Navigator.pop(context);
+                          await launchUrl(
+                            Uri.parse(downloadUrl),
+                            mode: LaunchMode.externalApplication,
+                          );
+                        }
+                      },
+                      child: const Text("下载"),
+                    ),
+                  ],
+          );
+        },
       ),
     );
   }
