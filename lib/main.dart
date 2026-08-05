@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-09 23:51:46
- * @LastEditTime: 2026-08-05 21:29:36
+ * @LastEditTime: 2026-08-05 22:18:33
  * @Description: main
  */
 
@@ -73,6 +73,7 @@ class VaultApp extends StatelessWidget {
       valueListenable: themeNotifier,
       builder: (_, mode, _) {
         return MaterialApp(
+          title: "Vault Keeper",
           debugShowCheckedModeBanner: false,
           themeMode: mode,
           theme: _buildLightTheme(), // 浅色主题
