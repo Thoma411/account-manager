@@ -49,12 +49,12 @@ jobs:
       - name: Rename APK
         run: |
           cd build/app/outputs/flutter-apk/
-          mv app-release.apk vault_keeper-arm64-v8a-release.apk || true
+          mv app-release.apk keeledger-arm64-v8a-release.apk || true
 
       - name: Upload APK to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/app/outputs/flutter-apk/vault_keeper-arm64-v8a-release.apk
+          files: build/app/outputs/flutter-apk/keeledger-arm64-v8a-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -78,12 +78,12 @@ jobs:
       - name: Archive Windows Release
         shell: pwsh
         run: |
-          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath build\windows\x64\runner\vault_keeper_windows.zip
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath build\windows\x64\runner\keeledger_windows.zip
 
       - name: Upload Windows ZIP to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/windows/x64/runner/vault_keeper_windows.zip
+          files: build/windows/x64/runner/keeledger_windows.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -106,11 +106,11 @@ jobs:
 
       - name: Archive macOS Release
         run: |
-          (cd build/macos/Build/Products/Release && zip -r vault_keeper_macos.zip accountmanager.app)
+          (cd build/macos/Build/Products/Release && zip -r keeledger_macos.zip keeledger.app)
 
       - name: Upload macOS ZIP to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/macos/Build/Products/Release/vault_keeper_macos.zip
+          files: build/macos/Build/Products/Release/keeledger_macos.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

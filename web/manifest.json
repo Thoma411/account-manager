@@ -1,6 +1,6 @@
 {
-    "name": "accountmanager",
-    "short_name": "accountmanager",
+    "name": "Keeledger",
+    "short_name": "keeledger",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

@@ -558,7 +558,7 @@ class SettingsPageState extends State<SettingsPage> {
         if (assets != null) {
           try {
             final apkAsset = assets.firstWhere(
-              (asset) => asset['name'] == 'vault_keeper-arm64-v8a-release.apk',
+              (asset) => asset['name'] == 'keeledger-arm64-v8a-release.apk',
             );
             apkDownloadUrl = apkAsset['browser_download_url'] ?? ""; // 提取直链
           } catch (_) {} // 查找失败按空值处理
@@ -705,7 +705,7 @@ class SettingsPageState extends State<SettingsPage> {
                             OtaUpdate()
                                 .execute(
                                   apkDownloadUrl, // 直链
-                                  destinationFilename: 'vault_keeper.apk',
+                                  destinationFilename: 'keeledger.apk',
                                 )
                                 .listen(
                                   (OtaEvent event) {
@@ -953,7 +953,7 @@ class SettingsPageState extends State<SettingsPage> {
         const Divider(),
         const ListTile(
           title: Text("关于项目"),
-          subtitle: Text("accountManager $currentVersion"),
+          subtitle: Text("Keeledger $currentVersion"),
           leading: Icon(Icons.info_outline),
         ),
 

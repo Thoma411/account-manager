@@ -5,7 +5,7 @@
  * @Description: README
 -->
 
-# accountmanager
+# Keeledger
 
 一个管理账号密码的小玩意儿，基于Flutter构建，支持零知识信封加密、本地SQLite存储、自适应布局、WebDAV云同步以及CSV数据迁移，现已适配Windows、macOS以及Android。
 

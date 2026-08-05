@@ -834,7 +834,7 @@ class AccountListPageState extends State<AccountListPage> {
           ),
           const SizedBox(height: 24),
           const Text(
-            "欢迎使用 Vault Keeper",
+            "欢迎使用 Keeledger",
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),

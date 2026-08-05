@@ -40,7 +40,7 @@ void main() async {
       size: Size(800, 600),
       minimumSize: Size(800, 600),
       center: true,
-      title: "Vault Keeper",
+      title: "Keeledger",
       skipTaskbar: false,
       titleBarStyle: TitleBarStyle.normal,
     );
@@ -60,12 +60,12 @@ void main() async {
   final isDark = settings.get('dark_mode') == 'true';
   themeNotifier.value = isDark ? ThemeMode.dark : ThemeMode.light;
 
-  runApp(VaultApp(isOldUser: oldUser)); // 运行应用并传递状态
+  runApp(KeeledgerApp(isOldUser: oldUser)); // 运行应用并传递状态
 }
 
-class VaultApp extends StatelessWidget {
+class KeeledgerApp extends StatelessWidget {
   final bool isOldUser;
-  const VaultApp({super.key, required this.isOldUser});
+  const KeeledgerApp({super.key, required this.isOldUser});
 
   @override
   Widget build(BuildContext context) {
@@ -73,7 +73,7 @@ class VaultApp extends StatelessWidget {
       valueListenable: themeNotifier,
       builder: (_, mode, _) {
         return MaterialApp(
-          title: "Vault Keeper",
+          title: "Keeledger",
           debugShowCheckedModeBanner: false,
           themeMode: mode,
           theme: _buildLightTheme(), // 浅色主题

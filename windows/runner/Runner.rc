@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "accountmanager" "\0"
+            VALUE "FileDescription", "keeledger" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "accountmanager" "\0"
+            VALUE "InternalName", "keeledger" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "accountmanager.exe" "\0"
-            VALUE "ProductName", "accountmanager" "\0"
+            VALUE "OriginalFilename", "keeledger.exe" "\0"
+            VALUE "ProductName", "keeledger" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

@@ -8,15 +8,15 @@
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
   // Create a unique mutex name, preferably including the project name.
-  // Note: The suffix L"Vault Keeper" ensures the lock is unique within the system.
-  HANDLE hMutex = CreateMutexW(NULL, TRUE, L"Local\\accountmanager_unique_mutex");
+  // Note: The suffix L"Keeledger" ensures the lock is unique within the system.
+  HANDLE hMutex = CreateMutexW(NULL, TRUE, L"Local\\keeledger_unique_mutex");
 
   // Check if a mutex with the same name already exists
   if (GetLastError() == ERROR_ALREADY_EXISTS) {
     // If an instance already exists, the application attempts to locate the existing window and bring it to the foreground.
     // The first parameter is the default Flutter class name: FLUTTER_RUNNER_WIN32_WINDOW.
-    // The second parameter must match the window title configured in your main.dart or elsewhere: "Vault Keeper".
-    HWND hWnd = FindWindowW(L"FLUTTER_RUNNER_WIN32_WINDOW", L"Vault Keeper");
+    // The second parameter must match the window title configured in your main.dart or elsewhere: "Keeledger".
+    HWND hWnd = FindWindowW(L"FLUTTER_RUNNER_WIN32_WINDOW", L"Keeledger");
     if (hWnd) {
       ShowWindow(hWnd, SW_RESTORE); // If the window is minimized, restore it first
       SetForegroundWindow(hWnd);    // bring window to the foreground focus
@@ -47,7 +47,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
-  if (!window.Create(L"accountmanager", origin, size)) {
+  if (!window.Create(L"keeledger", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);
