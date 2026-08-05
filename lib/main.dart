@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-02-09 23:51:46
- * @LastEditTime: 2026-07-29 23:32:28
+ * @LastEditTime: 2026-08-05 21:29:36
  * @Description: main
  */
 
@@ -41,7 +41,6 @@ void main() async {
       minimumSize: Size(800, 600),
       center: true,
       title: "Vault Keeper",
-      backgroundColor: Colors.transparent,
       skipTaskbar: false,
       titleBarStyle: TitleBarStyle.normal,
     );
