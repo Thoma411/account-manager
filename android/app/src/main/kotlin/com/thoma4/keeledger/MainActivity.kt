@@ -1,4 +1,4 @@
-package com.thoma4.accountmanager
+package com.thoma4.keeledger
 
 import android.content.pm.ActivityInfo
 import android.os.Bundle
