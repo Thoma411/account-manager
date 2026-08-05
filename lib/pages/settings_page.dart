@@ -538,7 +538,7 @@ class SettingsPageState extends State<SettingsPage> {
     );
     try {
       final url = Uri.parse(
-        "https://api.github.com/repos/Thoma411/account-manager/releases",
+        "https://api.github.com/repos/Thoma411/keeledger/releases",
       );
       final response = await http.get(url).timeout(const Duration(seconds: 8));
       if (response.statusCode == 200) {
