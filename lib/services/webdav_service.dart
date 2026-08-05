@@ -90,7 +90,7 @@ class WebDavService {
       final auth =
           'Basic ${base64.encode(utf8.encode('$_currentUser:$_currentPwd'))}';
       final targetUri = Uri.parse(
-        '${_currentUrl!}vault_keeper/vault_keeper.db',
+        '${_currentUrl!}keeledger/keeledger.db',
       );
 
       // 核心修改：使用 PROPFIND 替代 HEAD 以获取 ETag
@@ -126,8 +126,8 @@ class WebDavService {
         }
 
         return dav.File(
-          name: 'vault_keeper.db',
-          path: '/vault_keeper/vault_keeper.db',
+          name: 'keeledger.db',
+          path: '/keeledger/keeledger.db',
           size: int.tryParse(sizeMatch?.group(1) ?? '0') ?? 0,
           mTime: mTime,
           eTag: etag,
@@ -201,7 +201,7 @@ class WebDavService {
   Future<void> _ensureRemoteDir() async {
     final auth =
         'Basic ${base64.encode(utf8.encode('$_currentUser:$_currentPwd'))}';
-    final dirUri = Uri.parse('${_currentUrl!}vault_keeper/');
+    final dirUri = Uri.parse('${_currentUrl!}keeledger/');
     await http.Client().send(
       http.Request('MKCOL', dirUri)..headers['Authorization'] = auth,
     );
@@ -331,7 +331,7 @@ class WebDavService {
     // _ensureClient已经执行过，此时_currentXXX必不为空
     final auth =
         'Basic ${base64.encode(utf8.encode('$_currentUser:$_currentPwd'))}';
-    final targetUri = Uri.parse('${_currentUrl!}vault_keeper/vault_keeper.db');
+    final targetUri = Uri.parse('${_currentUrl!}keeledger/keeledger.db');
 
     if (method == 'PUT') {
       final bytes = await File(localPath).readAsBytes();

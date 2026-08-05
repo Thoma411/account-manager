@@ -715,13 +715,13 @@ class AccountListPageState extends State<AccountListPage> {
                 );
                 List<dav.File> files;
                 try {
-                  files = await webdav.readDir('/vault_keeper');
+                  files = await webdav.readDir('/keeledger');
                 } catch (e) {
-                  throw Exception("无法访问云端目录/vault_keeper，请确认目录已手动创建或执行过备份。");
+                  throw Exception("无法访问云端目录/keeledger，请确认目录已手动创建或执行过备份。");
                 }
                 // 检查文件是否存在
-                bool fileExists = files.any((f) => f.name == 'vault_keeper.db');
-                if (!fileExists) throw Exception("云端目录中未找到vault_keeper.db");
+                bool fileExists = files.any((f) => f.name == 'keeledger.db');
+                if (!fileExists) throw Exception("云端目录中未找到keeledger.db");
 
                 String newEtag = await webdav.downloadVault(); // 下载并获取云端etag
                 await _settings.set('last_synced_etag', newEtag); // 立即保存etag

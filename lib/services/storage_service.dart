@@ -48,11 +48,11 @@ class StorageService {
     if (Platform.isWindows) {
       sqfliteFfiInit(); // 仅Windows需要
       final dbPath = await databaseFactoryFfi.getDatabasesPath();
-      return join(dbPath, 'vault_keeper.db');
+      return join(dbPath, 'keeledger.db');
     } else {
       // Android路径获取
       final directory = await getApplicationDocumentsDirectory();
-      return join(directory.path, 'vault_keeper.db');
+      return join(directory.path, 'keeledger.db');
     }
   }
 
@@ -73,11 +73,11 @@ class StorageService {
       sqfliteFfiInit();
       final dbFactory = databaseFactoryFfi;
       final dbPath = await dbFactory.getDatabasesPath();
-      path = join(dbPath, 'vault_keeper.db');
+      path = join(dbPath, 'keeledger.db');
     } else {
       // Android/iOS
       final directory = await getApplicationDocumentsDirectory();
-      path = join(directory.path, 'vault_keeper.db');
+      path = join(directory.path, 'keeledger.db');
     }
     debugPrint("db real path: $path");
 
