@@ -1,13 +1,13 @@
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
-  image_path: "assets/accountmanager_logo_v1.png"
+  image_path: "assets/keeledger_logo_v1.png"
 
   windows:
     generate: true
-    image_path: "assets/accountmanager_logo_v1.png"
+    image_path: "assets/keeledger_logo_v2.png"
     icon_size: 256
 
   macos:
     generate: true
-    image_path: "assets/accountmanager_logo_v1.png"
+    image_path: "assets/keeledger_logo_v2.png"
