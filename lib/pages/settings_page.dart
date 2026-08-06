@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 00:17:53
- * @LastEditTime: 2026-08-07 00:42:42
+ * @LastEditTime: 2026-08-07 01:04:46
  * @Description: 设置页
  */
 
@@ -43,7 +43,7 @@ class SettingsPageState extends State<SettingsPage> {
   bool _autoFetchIcons = false; // 自动抓取图标
   bool _autoSyncEnabled = false; // 静默同步
 
-  static const String currentVersion = "v1.0.0";
+  static const String currentVersion = "v1.1.0";
 
   @override
   void initState() {
@@ -957,9 +957,9 @@ class SettingsPageState extends State<SettingsPage> {
           subtitle: const Text("查看使用说明与常见问题"),
           leading: const Icon(Icons.help_outline_rounded),
           onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const HelpPage()),
-            );
+            Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (context) => const HelpPage()));
           },
         ),
         const Divider(),

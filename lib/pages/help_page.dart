@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-08-07 00:33:58
- * @LastEditTime: 2026-08-07 00:49:47
+ * @LastEditTime: 2026-08-07 00:51:10
  * @Description: 使用帮助页
  */
 
@@ -39,10 +39,7 @@ class _HelpPageState extends State<HelpPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("使用帮助"),
-        centerTitle: false,
-      ),
+      appBar: AppBar(title: const Text("使用帮助"), centerTitle: false),
       body: FutureBuilder<String>(
         future: _contentFuture,
         builder: (context, snapshot) {
@@ -56,9 +53,7 @@ class _HelpPageState extends State<HelpPage> {
                 child: Text(
                   "帮助文档加载失败：\n${snapshot.error}",
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.error,
-                  ),
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
               ),
             );
