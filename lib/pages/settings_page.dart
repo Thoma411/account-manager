@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 00:17:53
- * @LastEditTime: 2026-08-06 22:41:07
+ * @LastEditTime: 2026-08-07 00:42:42
  * @Description: 设置页
  */
 
@@ -23,6 +23,7 @@ import '../services/csv_service.dart';
 import '../widgets/account_ui_utils.dart';
 import '../utils/utils.dart';
 import 'login_page.dart';
+import 'help_page.dart';
 import '../main.dart';
 
 // 设置界面
@@ -949,6 +950,17 @@ class SettingsPageState extends State<SettingsPage> {
           title: const Text("检查更新"),
           leading: const Icon(Icons.update_rounded),
           onTap: _checkForUpdates,
+        ),
+        const Divider(),
+        ListTile(
+          title: const Text("帮助"),
+          subtitle: const Text("查看使用说明与常见问题"),
+          leading: const Icon(Icons.help_outline_rounded),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const HelpPage()),
+            );
+          },
         ),
         const Divider(),
         ListTile(

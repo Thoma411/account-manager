@@ -28,6 +28,7 @@ dependencies:
   path_provider: ^2.1.5
   shared_preferences: ^2.5.5
   webdav_client: ^1.2.2
+  flutter_markdown_plus: ^1.0.12
 
 dependency_overrides:
   sqflite_common_ffi: 2.3.2+1
@@ -41,3 +42,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/docs/
