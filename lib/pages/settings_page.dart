@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 00:17:53
- * @LastEditTime: 2026-08-06 01:31:35
+ * @LastEditTime: 2026-08-06 21:50:17
  * @Description: 设置页
  */
 
@@ -949,6 +949,20 @@ class SettingsPageState extends State<SettingsPage> {
           title: const Text("检查更新"),
           leading: const Icon(Icons.update_rounded),
           onTap: _checkForUpdates,
+        ),
+        const Divider(),
+        ListTile(
+          title: const Text("反馈与建议"),
+          subtitle: const Text("参与讨论、提交建议或反馈问题"),
+          leading: const Icon(Icons.chat_bubble_outline_rounded),
+          onTap: () async {
+            const String discussionsUrl =
+                "https://github.com/Thoma411/keeledger/discussions";
+            await launchUrl(
+              Uri.parse(discussionsUrl),
+              mode: LaunchMode.externalApplication,
+            );
+          },
         ),
         const Divider(),
         const ListTile(
