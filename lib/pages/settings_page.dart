@@ -1,7 +1,7 @@
 /*
  * @Author: Thoma4
  * @Date: 2026-06-24 00:17:53
- * @LastEditTime: 2026-08-06 21:50:17
+ * @LastEditTime: 2026-08-06 22:41:07
  * @Description: 设置页
  */
 
@@ -965,10 +965,31 @@ class SettingsPageState extends State<SettingsPage> {
           },
         ),
         const Divider(),
-        const ListTile(
+        ListTile(
+          title: const Text("开源许可"),
+          subtitle: const Text("第三方开放源代码许可与版权声明"),
+          leading: const Icon(Icons.balance_rounded),
+          onTap: () {
+            showLicensePage(
+              context: context,
+              applicationName: "Keeledger",
+              applicationVersion: currentVersion,
+            );
+          },
+        ),
+        const Divider(),
+        ListTile(
           title: Text("关于项目"),
           subtitle: Text("Keeledger $currentVersion"),
           leading: Icon(Icons.info_outline),
+          onTap: () async {
+            const String discussionsUrl =
+                "https://github.com/Thoma411/keeledger/";
+            await launchUrl(
+              Uri.parse(discussionsUrl),
+              mode: LaunchMode.externalApplication,
+            );
+          },
         ),
 
         const SizedBox(height: 20),
